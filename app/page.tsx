@@ -6,12 +6,13 @@ import {
   Bot,
   BrainCircuit,
   Building2,
-  CheckCircle2,
   CircleDot,
   Database,
   Gauge,
   Globe2,
   LineChart,
+  Lock,
+  Mail,
   Network,
   RadioTower,
   ScanLine,
@@ -21,6 +22,8 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
 const navLinks = ["Consensus", "Terminal", "Infrastructure", "Docs"];
@@ -122,7 +125,7 @@ function Label({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PrimaryButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+function PrimaryButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold tracking-[0.01em] text-white shadow-[0_16px_42px_rgba(31,111,255,0.18)] transition duration-500 hover:-translate-y-0.5 hover:bg-[#3b82f6] hover:shadow-[0_18px_48px_rgba(31,111,255,0.24)]">
       {children}
@@ -219,67 +222,6 @@ function LiveFeed() {
         ))}
       </div>
     </section>
-  );
-}
-
-function AccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [submitted, setSubmitted] = useState(false);
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmitted(true);
-  }
-
-  return (
-    <motion.div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8" initial={false} animate={open ? "open" : "closed"} variants={{ open: { pointerEvents: "auto" }, closed: { pointerEvents: "none" } }}>
-      <motion.button type="button" aria-label="Close access request" className="absolute inset-0 bg-black/72 backdrop-blur-xl" onClick={onClose} variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }} transition={{ duration: 0.28, ease: "easeOut" }} />
-      <motion.div role="dialog" aria-modal="true" aria-labelledby="access-modal-title" className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-200/15 bg-[#050914]/95 shadow-[0_40px_120px_rgba(0,0,0,0.68)] ring-1 ring-blue-300/[0.08]" variants={{ open: { opacity: 1, y: 0, scale: 1 }, closed: { opacity: 0, y: 20, scale: 0.97 } }} transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(31,111,255,0.22),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_44%)]" />
-        <div className="relative border-b border-white/[0.075] px-6 py-5 sm:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.075] text-blue-200">
-                <Terminal className="size-5" />
-              </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">private terminal</span>
-            </div>
-            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
-              <X className="size-4" />
-            </button>
-          </div>
-        </div>
-        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
-          {submitted ? (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="py-7 text-center">
-              <CheckCircle2 className="mx-auto size-12 text-blue-200" />
-              <h2 className="mt-5 text-3xl font-medium tracking-[-0.03em] text-white">Access request received.</h2>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-400">OracleX will review your signal profile and follow up with next steps.</p>
-            </motion.div>
-          ) : (
-            <>
-              <h2 id="access-modal-title" className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white">Request OracleX Access</h2>
-              <p className="mt-4 text-sm leading-6 text-slate-400">Early access for traders, analysts, prediction markets, quant firms, and infrastructure partners.</p>
-              <form onSubmit={handleSubmit} className="mt-7 space-y-4">
-                {[
-                  ["Email", "email", "email"],
-                  ["Company or Project (optional)", "text", "company"],
-                  ["X handle (optional)", "text", "x-handle"],
-                ].map(([label, type, id]) => (
-                  <label key={id} htmlFor={id} className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</span>
-                    <input id={id} type={type} required={id === "email"} className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]" />
-                  </label>
-                ))}
-                <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
-                  Request Access
-                  <ArrowRight className="size-4" />
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 
@@ -514,23 +456,133 @@ function Infrastructure() {
   );
 }
 
+function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (email === "test@gmail.com" && password === "Test") {
+      router.push("/terminal");
+      return;
+    }
+
+    setError("Invalid credentials. Please try again.");
+  }
+
+  return (
+    <motion.div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-8" initial={false} animate={open ? "open" : "closed"} variants={{ open: { pointerEvents: "auto" }, closed: { pointerEvents: "none" } }}>
+      <motion.button type="button" aria-label="Close terminal login" className="absolute inset-0 bg-black/72 backdrop-blur-xl" onClick={onClose} variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }} transition={{ duration: 0.28, ease: "easeOut" }} />
+      <motion.div
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-200/15 bg-[#050914]/95 shadow-[0_40px_120px_rgba(0,0,0,0.68)] ring-1 ring-blue-300/[0.08]"
+        variants={{ open: { opacity: 1, y: 0, scale: 1 }, closed: { opacity: 0, y: 20, scale: 0.97 } }}
+        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terminal-login-title"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(31,111,255,0.22),transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_44%)]" />
+        <div className="relative border-b border-white/[0.075] px-6 py-5 sm:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.075] text-blue-200">
+                <Terminal className="size-5" />
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">PRIVATE TERMINAL</span>
+            </div>
+            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
+          <div className="mb-7">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-blue-300/15 bg-blue-300/[0.055] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-blue-100">
+              <Terminal className="size-3.5" />
+              PRIVATE TERMINAL
+            </div>
+            <h2 id="terminal-login-title" className="text-3xl font-semibold tracking-[-0.035em] text-white">
+              OracleX Terminal Login
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Enter your partner credentials to access the OracleX Intelligence Workspace.</p>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-300">
+                <Mail className="size-3.5 text-blue-200" />
+                Email
+              </span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError("");
+                }}
+                placeholder="Email"
+                autoComplete="username"
+                aria-invalid={error ? "true" : undefined}
+                className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-300">
+                <Lock className="size-3.5 text-blue-200" />
+                Password
+              </span>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError("");
+                }}
+                placeholder="Password"
+                autoComplete="current-password"
+                aria-invalid={error ? "true" : undefined}
+                className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
+              />
+            </label>
+            {error ? (
+              <div className="rounded-xl border border-red-300/20 bg-red-300/[0.06] px-4 py-3 text-sm text-red-100" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
+              Enter Terminal
+              <ArrowRight className="size-4" />
+            </button>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function Home() {
-  const [accessOpen, setAccessOpen] = useState(false);
+  const [isTerminalLoginOpen, setIsTerminalLoginOpen] = useState(false);
+  const openTerminalLogin = () => setIsTerminalLoginOpen(true);
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#02040a] text-white selection:bg-blue-300 selection:text-black">
-      <AccessModal open={accessOpen} onClose={() => setAccessOpen(false)} />
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_18%_12%,rgba(31,111,255,0.18),transparent_28%),radial-gradient(circle_at_86%_6%,rgba(96,165,250,0.08),transparent_26%),linear-gradient(180deg,#02040a_0%,#040814_46%,#02040a_100%)]" />
       <div className="pointer-events-none fixed inset-0 z-0 data-streams opacity-[0.035]" />
 
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.075] bg-black/62 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="#" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.01em] text-white">
+          <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.01em] text-white">
             <span className="grid size-8 place-items-center rounded-xl border border-blue-300/25 bg-blue-300/[0.055] text-blue-200">
               <Network className="size-4" />
             </span>
             OracleX
-          </a>
+          </Link>
           <div className="hidden items-center gap-8 text-xs font-medium text-slate-400 md:flex">
             {navLinks.map((link) => (
               <a key={link} href={link === "Docs" ? "#" : `#${link.toLowerCase()}`} className="transition duration-300 hover:text-blue-100">
@@ -538,7 +590,7 @@ export default function Home() {
               </a>
             ))}
           </div>
-          <button type="button" onClick={() => setAccessOpen(true)} className="hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 transition duration-300 hover:bg-blue-300/[0.1] sm:inline-flex">
+          <button type="button" onClick={openTerminalLogin} className="hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 transition duration-300 hover:bg-blue-300/[0.1] sm:inline-flex">
             Enter Terminal
           </button>
         </div>
@@ -551,7 +603,7 @@ export default function Home() {
           <p className="mt-8 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX is the intelligence infrastructure layer powering next-generation prediction markets on Solana.</p>
           <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Prediction markets solved liquidity. OracleX solves intelligence.</p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <PrimaryButton onClick={() => setAccessOpen(true)}>Enter Terminal</PrimaryButton>
+            <PrimaryButton onClick={openTerminalLogin}>Enter Terminal</PrimaryButton>
             <SecondaryButton>Read Docs</SecondaryButton>
           </div>
           <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-2xl">
@@ -580,7 +632,7 @@ export default function Home() {
             <Label>OracleX Protocol</Label>
             <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">The future of prediction markets runs on intelligence.</h2>
             <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-              <PrimaryButton onClick={() => setAccessOpen(true)}>Enter Terminal</PrimaryButton>
+              <PrimaryButton onClick={openTerminalLogin}>Enter Terminal</PrimaryButton>
               <SecondaryButton>Read Docs</SecondaryButton>
             </div>
           </motion.div>
@@ -602,6 +654,7 @@ export default function Home() {
           </div>
         </footer>
       </div>
+      <EnterTerminalModal open={isTerminalLoginOpen} onClose={() => setIsTerminalLoginOpen(false)} />
     </main>
   );
 }
