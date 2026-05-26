@@ -28,7 +28,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
-import { createPendingSubscription, getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
+import { getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
 const navLinks = ["Consensus", "Terminal", "Infrastructure", "Docs"];
 
@@ -154,6 +154,8 @@ const standardPlans = [
 ];
 
 const enterpriseAccess = ["Intelligence APIs", "Consensus feeds", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
+
+type HomepagePricingPlan = Extract<Plan, "observer" | "analyst" | "operator">;
 
 const fadeUp = {
   initial: { opacity: 0, y: 18 },
@@ -563,112 +565,9 @@ function EnterpriseAccessModal({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-function CheckoutModal({ plan, onClose }: { plan: (typeof standardPlans)[number] | null; onClose: () => void }) {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const open = Boolean(plan);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!email.trim()) {
-      setError("Please enter your email before continuing.");
-      return;
-    }
-
-    if (plan?.checkoutLink) {
-      setIsSubmitting(true);
-      try {
-        await createPendingSubscription({ plan: plan.plan, amountUsd: plan.amountUsd, paymentUrl: plan.checkoutLink });
-      } catch (subscriptionError) {
-        console.warn("Unable to create pending Supabase subscription before NOWPayments checkout.", subscriptionError);
-      } finally {
-        // The future NOWPayments webhook will confirm payment and set this subscription to active.
-        window.open(plan.checkoutLink, "_blank", "noopener,noreferrer");
-        setIsSubmitting(false);
-      }
-    }
-  }
-
-  return (
-    <motion.div className="fixed inset-0 z-[95] flex items-center justify-center px-4 py-8" initial={false} animate={open ? "open" : "closed"} variants={{ open: { pointerEvents: "auto" }, closed: { pointerEvents: "none" } }}>
-      <motion.button type="button" aria-label="Close crypto checkout" className="absolute inset-0 bg-black/76 backdrop-blur-xl" onClick={onClose} variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }} transition={{ duration: 0.28, ease: "easeOut" }} />
-      <motion.div
-        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-200/15 bg-[#050914]/95 shadow-[0_40px_120px_rgba(0,0,0,0.72)] ring-1 ring-blue-300/[0.08]"
-        variants={{ open: { opacity: 1, y: 0, scale: 1 }, closed: { opacity: 0, y: 22, scale: 0.97 } }}
-        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="checkout-title"
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(31,111,255,0.24),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_42%)]" />
-        <div className="relative border-b border-white/[0.075] px-6 py-5 sm:px-8">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.075] text-blue-200">
-                <Terminal className="size-5" />
-              </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">CRYPTO CHECKOUT</span>
-            </div>
-            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
-              <X className="size-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
-          <div className="mb-7">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-blue-300/15 bg-blue-300/[0.055] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-blue-100">
-              <Sparkles className="size-3.5" />
-              OracleX access
-            </div>
-            <h2 id="checkout-title" className="text-3xl font-semibold tracking-[-0.035em] text-white">
-              {plan?.name ?? "Access Level"}
-            </h2>
-            <div className="mt-3 font-mono text-4xl font-medium tracking-[-0.06em] text-white">{plan?.price ?? ""}</div>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-300">
-                <Mail className="size-3.5 text-blue-200" />
-                Email
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                  setError("");
-                }}
-                placeholder="name@email.com"
-                autoComplete="email"
-                aria-invalid={error ? "true" : undefined}
-                className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
-              />
-            </label>
-            <p className="rounded-xl border border-blue-300/14 bg-blue-300/[0.055] px-4 py-3 text-sm leading-6 text-blue-100/86">Crypto payments are processed securely through NOWPayments.</p>
-            {error ? (
-              <div className="rounded-xl border border-red-300/20 bg-red-300/[0.06] px-4 py-3 text-sm text-red-100" role="alert">
-                {error}
-              </div>
-            ) : null}
-            <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60">
-              {isSubmitting ? "Preparing Checkout..." : "Continue to Crypto Checkout"}
-              <ArrowRight className="size-4" />
-            </button>
-          </form>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function PricingSection() {
+function PricingSection({ onEnterAccessLevel }: { onEnterAccessLevel: (plan: HomepagePricingPlan) => void }) {
   const [accessMode, setAccessMode] = useState<"standard" | "enterprise">("standard");
   const [isEnterpriseAccessOpen, setIsEnterpriseAccessOpen] = useState(false);
-  const [checkoutPlan, setCheckoutPlan] = useState<(typeof standardPlans)[number] | null>(null);
 
   return (
     <section id="pricing" className="relative border-y border-white/[0.075] bg-[linear-gradient(180deg,rgba(3,6,13,0.72),rgba(31,111,255,0.045),rgba(3,6,13,0.82))] px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
@@ -729,7 +628,7 @@ function PricingSection() {
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={() => (plan.enterprise ? setIsEnterpriseAccessOpen(true) : setCheckoutPlan(plan))} className={`mt-8 inline-flex h-12 items-center justify-center rounded-xl border px-5 text-[13px] font-semibold transition duration-500 ${plan.popular ? "border-blue-300/45 bg-[#1f6fff] text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] hover:bg-[#3b82f6]" : "border-white/[0.09] bg-white/[0.04] text-slate-100 hover:border-blue-300/26 hover:bg-blue-300/[0.08]"}`}>
+                  <button type="button" onClick={() => (plan.enterprise ? setIsEnterpriseAccessOpen(true) : onEnterAccessLevel(plan.plan as HomepagePricingPlan))} className={`mt-8 inline-flex h-12 items-center justify-center rounded-xl border px-5 text-[13px] font-semibold transition duration-500 ${plan.popular ? "border-blue-300/45 bg-[#1f6fff] text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] hover:bg-[#3b82f6]" : "border-white/[0.09] bg-white/[0.04] text-slate-100 hover:border-blue-300/26 hover:bg-blue-300/[0.08]"}`}>
                     {plan.enterprise ? "Request Access" : "Enter Access Level"}
                   </button>
                 </motion.div>
@@ -764,13 +663,12 @@ function PricingSection() {
           )}
         </motion.div>
       </div>
-      <CheckoutModal key={checkoutPlan?.name ?? "checkout"} plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />
       <EnterpriseAccessModal open={isEnterpriseAccessOpen} onClose={() => setIsEnterpriseAccessOpen(false)} />
     </section>
   );
 }
 
-function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function EnterTerminalModal({ open, onClose, openedFromPricing }: { open: boolean; onClose: () => void; openedFromPricing: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -795,7 +693,7 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
       const session = isSignup ? await signUpWithSupabase(email, password) : await loginWithSupabase(email, password);
 
       if (session) {
-        router.push(isSignup ? "/terminal/settings?activation=created" : "/terminal");
+        router.push(openedFromPricing ? "/terminal/settings" : isSignup ? "/terminal/settings?activation=created" : "/terminal");
         return;
       }
 
@@ -807,7 +705,7 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
 
         if (plan) {
           saveMockSession(email, plan);
-          router.push("/terminal");
+          router.push(openedFromPricing ? "/terminal/settings" : "/terminal");
           return;
         }
       }
@@ -854,7 +752,11 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
               {isSignup ? "Create OracleX Account" : "OracleX Terminal Login"}
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              {isSignup ? "Create a Supabase Auth account, then choose a plan to activate terminal access." : "Use Supabase Auth, or a demo account while local plan testing remains enabled."}
+              {openedFromPricing
+                ? "Create an account first. After login, you can activate this plan from your billing settings."
+                : isSignup
+                  ? "Create a Supabase Auth account, then choose a plan to activate terminal access."
+                  : "Use Supabase Auth, or a demo account while local plan testing remains enabled."}
             </p>
           </div>
 
@@ -963,7 +865,16 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
 
 export default function Home() {
   const [isTerminalLoginOpen, setIsTerminalLoginOpen] = useState(false);
-  const openTerminalLogin = () => setIsTerminalLoginOpen(true);
+  const [terminalLoginSource, setTerminalLoginSource] = useState<"terminal" | "pricing">("terminal");
+  const openTerminalLogin = () => {
+    setTerminalLoginSource("terminal");
+    setIsTerminalLoginOpen(true);
+  };
+  const openPricingLogin = (plan: HomepagePricingPlan) => {
+    localStorage.setItem("intendedPlan", plan);
+    setTerminalLoginSource("pricing");
+    setIsTerminalLoginOpen(true);
+  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#02040a] text-white selection:bg-blue-300 selection:text-black">
@@ -1021,7 +932,7 @@ export default function Home() {
         <IntelligenceTerminal />
         <WhyOracleX />
         <Infrastructure />
-        <PricingSection />
+        <PricingSection onEnterAccessLevel={openPricingLogin} />
 
         <section className="px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
           <motion.div {...fadeUp} className="mx-auto max-w-5xl rounded-2xl border border-blue-300/20 bg-blue-300/[0.045] p-8 text-center shadow-[0_34px_90px_rgba(0,0,0,0.26)] sm:p-16">
@@ -1050,7 +961,7 @@ export default function Home() {
           </div>
         </footer>
       </div>
-      <EnterTerminalModal open={isTerminalLoginOpen} onClose={() => setIsTerminalLoginOpen(false)} />
+      <EnterTerminalModal open={isTerminalLoginOpen} onClose={() => setIsTerminalLoginOpen(false)} openedFromPricing={terminalLoginSource === "pricing"} />
     </main>
   );
 }

@@ -2,7 +2,7 @@
 
 import { ArrowRight, Check, CheckCircle2, CreditCard, Lock, LogOut, Mail, Network, Server, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Panel, PanelHeader } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,12 @@ const accessRows: { module: string; plans: Plan[] }[] = [
   { module: "Webhooks", plans: ["enterprise"] },
   { module: "Enterprise Feeds", plans: ["enterprise"] },
 ];
+
+function readIntendedPlan(): Plan | null {
+  if (typeof window === "undefined") return null;
+  const plan = localStorage.getItem("intendedPlan");
+  return plan === "observer" || plan === "analyst" || plan === "operator" ? plan : null;
+}
 
 function CheckoutModal({ plan, onClose }: { plan: BillingPlan | null; onClose: () => void }) {
   const { session } = useCurrentSession();
@@ -190,8 +196,23 @@ export default function SettingsPage() {
   const currentPlan = session?.plan ?? null;
   const isPending = session?.source === "supabase" && session.subscriptionStatus !== "active";
   const [signupCreated] = useState(() => (typeof window === "undefined" ? false : new URLSearchParams(window.location.search).get("activation") === "created"));
+  const [intendedPlan, setIntendedPlan] = useState<Plan | null>(readIntendedPlan);
   const [checkoutPlan, setCheckoutPlan] = useState<BillingPlan | null>(null);
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
+
+  useEffect(() => {
+    function syncIntendedPlan() {
+      setIntendedPlan(readIntendedPlan());
+    }
+
+    window.addEventListener("storage", syncIntendedPlan);
+    window.addEventListener("oraclex-auth", syncIntendedPlan);
+
+    return () => {
+      window.removeEventListener("storage", syncIntendedPlan);
+      window.removeEventListener("oraclex-auth", syncIntendedPlan);
+    };
+  }, []);
 
   async function logout() {
     await logoutOracleX();
@@ -207,7 +228,9 @@ export default function SettingsPage() {
               <div className="rounded-xl border border-blue-300/18 bg-blue-300/[0.07] p-4">
                 <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-blue-100">{signupCreated ? "Account created" : "Activate your access"}</div>
                 <h1 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-white">Activate your access</h1>
-                <p className="mt-2 text-sm leading-6 text-slate-300">Your account has been created. Choose a plan to activate OracleX Terminal access.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  {intendedPlan ? `${formatPlan(intendedPlan)} is selected. Activate it from billing to unlock OracleX Terminal access.` : "Your account has been created. Choose a plan to activate OracleX Terminal access."}
+                </p>
               </div>
             </CardContent>
           </Panel>
@@ -237,16 +260,18 @@ export default function SettingsPage() {
           <CardContent className="grid gap-3 p-4 xl:grid-cols-4">
             {billingPlans.map((item) => {
               const isCurrent = !isPending && item.plan === currentPlan;
+              const isIntended = intendedPlan === item.plan && !isCurrent;
               const isUpgrade = isPlanUpgrade(currentPlan, item.plan);
 
               return (
-                <div key={item.plan} className={`flex min-h-[270px] flex-col rounded-xl border p-4 ${isCurrent ? "border-blue-300/28 bg-blue-300/[0.07]" : "border-white/[0.075] bg-black/28"}`}>
+                <div key={item.plan} className={`flex min-h-[270px] flex-col rounded-xl border p-4 ${isCurrent || isIntended ? "border-blue-300/28 bg-blue-300/[0.07]" : "border-white/[0.075] bg-black/28"}`}>
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div>
                       <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">{item.name}</h2>
                       <div className="mt-2 font-mono text-2xl tracking-[-0.05em] text-white">{item.price}</div>
                     </div>
                     {isCurrent ? <Badge className="h-6 rounded-lg border border-emerald-300/20 bg-emerald-300/[0.08] font-mono text-[10px] text-emerald-100">Current</Badge> : null}
+                    {isIntended ? <Badge className="h-6 rounded-lg border border-blue-300/20 bg-blue-300/[0.08] font-mono text-[10px] text-blue-100">Selected</Badge> : null}
                     {isPending && item.plan === currentPlan ? <Badge className="h-6 rounded-lg border border-blue-300/20 bg-blue-300/[0.08] font-mono text-[10px] text-blue-100">Pending</Badge> : null}
                   </div>
                   <p className="text-xs leading-5 text-slate-400">{item.description}</p>
