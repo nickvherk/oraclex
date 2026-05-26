@@ -12,10 +12,13 @@ import {
   Gauge,
   Globe2,
   Layers,
+  LogOut,
+  Lock,
   Network,
   Plug,
   Radio,
   Search,
+  Settings,
   Server,
   ShieldCheck,
   Terminal,
@@ -25,50 +28,58 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
+import { LockedAccessScreen } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { canAccess, Feature, formatPlan, logoutOracleX, useCurrentSession } from "@/lib/access-control";
 
 const navSections = [
   {
     label: "INTELLIGENCE",
     items: [
-      { label: "Live Feed", href: "/terminal", icon: Radio },
-      { label: "Consensus Engine", href: "/terminal/consensus", icon: BrainCircuit },
-      { label: "Signal Monitor", href: "/terminal/signals", icon: Activity },
-      { label: "Narrative Watch", href: "/terminal/narratives", icon: Globe2 },
-      { label: "Wallet Intelligence", href: "/terminal/wallets", icon: Wallet },
-      { label: "Cross-Market Flows", href: "/terminal/flows", icon: Layers },
+      { label: "Live Feed", href: "/terminal", icon: Radio, feature: "liveFeed" },
+      { label: "Consensus Engine", href: "/terminal/consensus", icon: BrainCircuit, feature: "consensusEngine" },
+      { label: "Signal Monitor", href: "/terminal/signals", icon: Activity, feature: "signalMonitor" },
+      { label: "Narrative Watch", href: "/terminal/narratives", icon: Globe2, feature: "narrativeWatch" },
+      { label: "Wallet Intelligence", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
+      { label: "Cross-Market Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
     ],
   },
   {
     label: "MARKETS",
     items: [
-      { label: "Crypto", href: "/terminal", icon: BarChart3 },
-      { label: "Politics", href: "/terminal", icon: ShieldCheck },
-      { label: "Macro", href: "/terminal", icon: Gauge },
-      { label: "AI", href: "/terminal", icon: Cpu },
-      { label: "Sports", href: "/terminal", icon: Zap },
+      { label: "Crypto", href: "/terminal", icon: BarChart3, feature: "liveFeed" },
+      { label: "Politics", href: "/terminal", icon: ShieldCheck, feature: "liveFeed" },
+      { label: "Macro", href: "/terminal", icon: Gauge, feature: "liveFeed" },
+      { label: "AI", href: "/terminal", icon: Cpu, feature: "liveFeed" },
+      { label: "Sports", href: "/terminal", icon: Zap, feature: "liveFeed" },
     ],
   },
   {
     label: "INFRASTRUCTURE",
     items: [
-      { label: "APIs", href: "/terminal", icon: Plug },
-      { label: "Enterprise Feeds", href: "/terminal", icon: Server },
-      { label: "Webhooks", href: "/terminal", icon: Webhook },
-      { label: "Data Streams", href: "/terminal", icon: Database },
+      { label: "APIs", href: "/terminal/apis", icon: Plug, feature: "apis" },
+      { label: "Enterprise Feeds", href: "/terminal/enterprise-feeds", icon: Server, feature: "enterpriseFeeds" },
+      { label: "Webhooks", href: "/terminal/webhooks", icon: Webhook, feature: "webhooks" },
+      { label: "Data Streams", href: "/terminal/data-streams", icon: Database, feature: "dataStreams" },
     ],
   },
   {
     label: "AGENTS",
     items: [
-      { label: "Narrative Agent", href: "/terminal/narratives", icon: Bot },
-      { label: "Whale Agent", href: "/terminal/signals", icon: Wallet },
-      { label: "Truth Agent", href: "/terminal/consensus", icon: CheckCircle2 },
-      { label: "Liquidity Agent", href: "/terminal/signals", icon: Layers },
+      { label: "Narrative Agent", href: "/terminal/narratives", icon: Bot, feature: "narrativeWatch" },
+      { label: "Whale Agent", href: "/terminal/signals", icon: Wallet, feature: "signalMonitor" },
+      { label: "Truth Agent", href: "/terminal/consensus", icon: CheckCircle2, feature: "consensusEngine" },
+      { label: "Liquidity Agent", href: "/terminal/signals", icon: Layers, feature: "signalMonitor" },
+    ],
+  },
+  {
+    label: "MANAGEMENT",
+    items: [
+      { label: "Settings", href: "/terminal/settings", icon: Settings, feature: "terminal" },
     ],
   },
 ];
@@ -87,6 +98,11 @@ const routeTitles: Record<string, string> = {
   "/terminal/signals": "Signal Monitor",
   "/terminal/wallets": "Wallet Intelligence",
   "/terminal/flows": "Cross-Market Flows",
+  "/terminal/apis": "OracleX APIs",
+  "/terminal/webhooks": "Webhooks",
+  "/terminal/enterprise-feeds": "Enterprise Feeds",
+  "/terminal/data-streams": "Data Streams",
+  "/terminal/settings": "Account Settings",
 };
 
 export function Panel({ className = "", children }: { className?: string; children: React.ReactNode }) {
@@ -134,6 +150,15 @@ export function SeverityBadge({ severity }: { severity: string }) {
 
 function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { session } = useCurrentSession();
+  const isPendingSupabaseUser = session?.source === "supabase" && session.subscriptionStatus !== "active";
+  const activePlan = isPendingSupabaseUser ? null : session?.plan ?? null;
+
+  async function logout() {
+    await logoutOracleX();
+    router.push("/");
+  }
 
   return (
     <aside className="hidden h-screen w-[280px] shrink-0 border-r border-white/[0.075] bg-black/55 xl:flex xl:flex-col">
@@ -152,17 +177,19 @@ function Sidebar() {
             <div className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">{section.label}</div>
             <div className="space-y-1">
               {section.items.map((item) => {
-                const active = pathname === item.href && section.label === "INTELLIGENCE";
+                const active = pathname === item.href;
                 const Icon = item.icon;
+                const locked = item.href !== "/terminal/settings" && !canAccess(activePlan, item.feature as Feature);
 
                 return (
                   <Link
                     key={`${section.label}-${item.label}`}
                     href={item.href}
-                    className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs font-medium transition ${active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`}
+                    className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs font-medium transition ${active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : locked ? "text-slate-600 hover:bg-white/[0.02] hover:text-slate-400" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`}
                   >
                     <Icon className="size-4" />
-                    {item.label}
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    {locked ? <Lock className="size-3.5" /> : null}
                   </Link>
                 );
               })}
@@ -171,6 +198,24 @@ function Sidebar() {
         ))}
       </nav>
       <div className="border-t border-white/[0.075] p-4">
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-blue-300/14 bg-blue-300/[0.055] p-3">
+          <div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-500">{isPendingSupabaseUser ? "Access inactive" : "Current plan"}</div>
+            <div className="mt-1 text-xs font-semibold text-blue-100">{isPendingSupabaseUser ? "Activation required" : formatPlan(session?.plan ?? null)}</div>
+            {isPendingSupabaseUser ? (
+              <button type="button" onClick={() => router.push("/terminal/settings")} className="mt-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-blue-200 transition hover:text-white">
+                Activate Access
+              </button>
+            ) : activePlan === "observer" ? (
+              <button type="button" onClick={() => router.push("/terminal/settings")} className="mt-1 text-left font-mono text-[9px] uppercase tracking-[0.12em] text-blue-200 transition hover:text-white">
+                Upgrade recommended: Analyst
+              </button>
+            ) : null}
+          </div>
+          <button type="button" onClick={logout} className="grid size-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-slate-300 transition hover:border-blue-300/20 hover:text-white" aria-label="Logout">
+            <LogOut className="size-4" />
+          </button>
+        </div>
         <div className="space-y-2 rounded-xl border border-white/[0.075] bg-white/[0.025] p-3">
           {sidebarStats.map(([label, value, tone]) => (
             <div key={label} className="flex items-center justify-between gap-3 text-xs">
@@ -187,6 +232,19 @@ function Sidebar() {
 export function TerminalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const title = routeTitles[pathname] ?? "OracleX Intelligence Workspace";
+  const { session } = useCurrentSession();
+  const isPendingSupabaseUser = session?.source === "supabase" && session.subscriptionStatus !== "active";
+  const content =
+    isPendingSupabaseUser && pathname !== "/terminal/settings" ? (
+      <LockedAccessScreen
+        requiredPlan="observer"
+        title="Terminal access locked"
+        badgeLabel="Requires active subscription"
+        explanation="Activate a plan to access the OracleX Terminal."
+      />
+    ) : (
+      children
+    );
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#02040a] text-white selection:bg-blue-300 selection:text-black">
@@ -224,7 +282,7 @@ export function TerminalShell({ children }: { children: React.ReactNode }) {
               <User className="size-4" />
             </button>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-5">{content}</div>
         </section>
       </div>
     </main>

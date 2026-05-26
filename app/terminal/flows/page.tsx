@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, Database, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
+import { FeatureGate } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 
@@ -240,6 +241,14 @@ function SelectControl<T extends string>({ label, value, options, onChange }: { 
 }
 
 export default function CrossMarketFlowsPage() {
+  return (
+    <FeatureGate feature="crossMarketFlows" explanation="Cross-Market Flows are part of the Operator terminal and Enterprise workspace.">
+      <CrossMarketFlowsWorkspace />
+    </FeatureGate>
+  );
+}
+
+function CrossMarketFlowsWorkspace() {
   const [asset, setAsset] = useState<Asset>("All");
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
   const [group, setGroup] = useState<TraderGroup>("Top 50");

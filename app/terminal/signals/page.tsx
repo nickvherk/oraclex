@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Activity, AlertOctagon, AlertTriangle, BellRing, CircleDot, Gauge, Radio, ShieldAlert, Wallet, Waves, Zap } from "lucide-react";
 
 import { Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
+import { FeatureGate } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 
@@ -36,6 +37,14 @@ function categoryIcon(category: string) {
 }
 
 export default function SignalsPage() {
+  return (
+    <FeatureGate feature="signalMonitor" explanation="Signal Monitor, whale monitoring, advanced alerts, and early signal systems require Operator access or higher.">
+      <SignalsWorkspace />
+    </FeatureGate>
+  );
+}
+
+function SignalsWorkspace() {
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="grid min-w-0 gap-4">

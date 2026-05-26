@@ -1,11 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, AlertTriangle, BrainCircuit, CircleDot, Database, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
+import { Activity, AlertTriangle, BrainCircuit, CircleDot, Database, Lock, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 
+import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
 import { BiasBadge, Panel, PanelHeader } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
+import { useCurrentPlan } from "@/lib/access-control";
 
 const markets = [
   { title: "SOL ETF approved before Q4", sector: "Crypto", poly: "64.8%", oracle: "71.2%", change: "+12.0%", bias: "Bullish", volume: "$18.4M" },
@@ -47,7 +49,18 @@ const breakdown = [
 ];
 
 export default function TerminalPage() {
+  return (
+    <FeatureGate feature="terminal" explanation="Sign in with an OracleX demo account to access the terminal workspace.">
+      <TerminalDashboard />
+    </FeatureGate>
+  );
+}
+
+function TerminalDashboard() {
   const selected = markets[0];
+  const { plan } = useCurrentPlan();
+  const isObserver = plan === "observer";
+  const visibleAgents = isObserver ? agents.slice(0, 2) : agents;
 
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -76,54 +89,64 @@ export default function TerminalPage() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)]">
           <Panel>
-            <PanelHeader title="Prediction Markets" action="Live pricing" />
+            <PanelHeader title="Prediction Markets" action={isObserver ? "Observer preview" : "Live pricing"} />
             <CardContent className="grid gap-3 p-4">
-              {markets.map((market) => (
-                <div key={market.title} className="rounded-xl border border-white/[0.075] bg-black/30 p-4 transition hover:border-blue-300/20 hover:bg-blue-300/[0.035]">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="mb-2 flex items-center gap-2">
-                        <Badge className="h-5 rounded-md border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{market.sector}</Badge>
-                        <BiasBadge bias={market.bias} />
+              {markets.map((market, index) => {
+                const locked = isObserver && index >= 2;
+
+                return (
+                  <div key={market.title} className="relative overflow-hidden rounded-xl border border-white/[0.075] bg-black/30 p-4 transition hover:border-blue-300/20 hover:bg-blue-300/[0.035]">
+                    <div className={locked ? "blur-[2px]" : ""}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="mb-2 flex items-center gap-2">
+                            <Badge className="h-5 rounded-md border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{market.sector}</Badge>
+                            <BiasBadge bias={market.bias} />
+                          </div>
+                          <h2 className="text-sm font-semibold tracking-[-0.01em] text-white">{market.title}</h2>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono text-2xl tracking-[-0.05em] text-white">{market.oracle}</div>
+                          <div className={`mt-1 flex items-center justify-end gap-1 font-mono text-[11px] ${market.change.startsWith("+") ? "text-emerald-200" : "text-red-200"}`}>
+                            {market.change.startsWith("+") ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+                            {market.change}
+                          </div>
+                        </div>
                       </div>
-                      <h2 className="text-sm font-semibold tracking-[-0.01em] text-white">{market.title}</h2>
+                      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                        {[
+                          ["Polymarket", market.poly],
+                          ["OracleX", market.oracle],
+                          ["Volume", market.volume],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-lg bg-white/[0.035] p-2">
+                            <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
+                            <div className={`mt-1 font-mono ${label === "OracleX" ? "text-blue-200" : "text-slate-200"}`}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-mono text-2xl tracking-[-0.05em] text-white">{market.oracle}</div>
-                      <div className={`mt-1 flex items-center justify-end gap-1 font-mono text-[11px] ${market.change.startsWith("+") ? "text-emerald-200" : "text-red-200"}`}>
-                        {market.change.startsWith("+") ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-                        {market.change}
-                      </div>
-                    </div>
+                    {locked ? <PremiumLockedOverlay copy="Unlock full market intelligence with Analyst" /> : null}
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                    {[
-                      ["Polymarket", market.poly],
-                      ["OracleX", market.oracle],
-                      ["Volume", market.volume],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-lg bg-white/[0.035] p-2">
-                        <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
-                        <div className={`mt-1 font-mono ${label === "OracleX" ? "text-blue-200" : "text-slate-200"}`}>{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Panel>
 
           <Panel>
-            <PanelHeader title="Live Intelligence Feed" action="Streaming" />
+            <PanelHeader title="Live Intelligence Feed" action={isObserver ? "15 min delayed" : "Streaming"} />
             <CardContent className="max-h-[524px] space-y-2 overflow-hidden p-4">
               {feed.map(([time, text, value], index) => (
-                <motion.div key={`${time}-${text}`} className="flex items-start gap-3 rounded-xl border border-white/[0.065] bg-black/28 p-3" animate={{ opacity: [0.72, 1, 0.84] }} transition={{ duration: 4.5, repeat: Infinity, delay: index * 0.35 }}>
-                  <CircleDot className="mt-0.5 size-3.5 shrink-0 text-blue-200" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[10px] text-slate-600">{time}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-300">{text}</div>
+                <motion.div key={`${time}-${text}`} className="relative overflow-hidden rounded-xl border border-white/[0.065] bg-black/28" animate={{ opacity: [0.72, 1, 0.84] }} transition={{ duration: 4.5, repeat: Infinity, delay: index * 0.35 }}>
+                  <div className={`flex items-start gap-3 p-3 ${isObserver && index >= 3 ? "blur-[2px]" : ""}`}>
+                    <CircleDot className="mt-0.5 size-3.5 shrink-0 text-blue-200" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-[10px] text-slate-600">{time}</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-300">{text}</div>
+                    </div>
+                    <span className="font-mono text-[10px] text-blue-200">{value}</span>
                   </div>
-                  <span className="font-mono text-[10px] text-blue-200">{value}</span>
+                  {isObserver && index >= 3 ? <PremiumLockedOverlay copy="Real-time intelligence requires Analyst" compact /> : null}
                 </motion.div>
               ))}
             </CardContent>
@@ -132,9 +155,9 @@ export default function TerminalPage() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader title="Consensus Summary" action="4 live agents" />
+            <PanelHeader title="Consensus Summary" action={isObserver ? "Basic signals" : "4 live agents"} />
             <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-              {agents.map(([name, confidence, signal, bias]) => (
+              {visibleAgents.map(([name, confidence, signal, bias]) => (
                 <div key={name} className="rounded-xl border border-white/[0.075] bg-white/[0.025] p-4">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="text-sm font-semibold text-white">{name}</div>
@@ -150,6 +173,15 @@ export default function TerminalPage() {
                   <p className="mt-3 text-xs leading-5 text-slate-400">{signal}</p>
                 </div>
               ))}
+              {isObserver ? (
+                <div className="rounded-xl border border-blue-300/18 bg-blue-300/[0.055] p-4 xl:col-span-2">
+                  <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-blue-100">
+                    <Lock className="size-4" />
+                    Analyst upgrade
+                  </div>
+                  <h2 className="text-sm font-semibold text-white">Upgrade to Analyst for real-time wallet intelligence, consensus engine, and advanced filters.</h2>
+                </div>
+              ) : null}
             </CardContent>
           </Panel>
 

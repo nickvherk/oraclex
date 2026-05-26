@@ -7,22 +7,46 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getMockPlan, loginWithSupabase, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSignup, setIsSignup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
 
-    if (email === "Test" && password === "Test") {
-      router.push("/terminal");
+    try {
+      const session = isSignup ? await signUpWithSupabase(email, password) : await loginWithSupabase(email, password);
+
+      if (session) {
+        router.push(isSignup ? "/terminal/settings?activation=created" : "/terminal");
+        return;
+      }
+
+      setError("Account created. Check your email to confirm the account before logging in.");
       return;
-    }
+    } catch (supabaseError) {
+      if (!isSignup) {
+        const plan = getMockPlan(email, password);
 
-    setError("Invalid credentials. Please try again.");
+        if (plan) {
+          saveMockSession(email, plan);
+          router.push("/terminal");
+          return;
+        }
+      }
+
+      setError(supabaseError instanceof Error ? supabaseError.message : "Authentication failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -62,7 +86,7 @@ export default function LoginPage() {
                 Terminal Login
               </div>
               <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white">OracleX Terminal Login</h1>
-              <p className="mt-3 text-sm leading-6 text-slate-400">Private access for OracleX intelligence partners.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">Supabase Auth access with local demo fallback for plan testing.</p>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -111,24 +135,41 @@ export default function LoginPage() {
               ) : null}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="mt-2 h-12 w-full rounded-xl border border-blue-300/45 bg-[#1f6fff] text-sm font-semibold text-white shadow-[0_18px_52px_rgba(31,111,255,0.24)] hover:bg-[#3b82f6]"
               >
-                Enter Terminal
+                {isSubmitting ? "Authenticating..." : isSignup ? "Create Account" : "Enter Terminal"}
                 <ArrowRight className="size-4" />
               </Button>
             </form>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignup((current) => !current);
+                setError("");
+              }}
+              className="mt-4 w-full text-center text-xs font-semibold text-blue-100 transition hover:text-white"
+            >
+              {isSignup ? "Have an account? Log in" : "Create a Supabase account"}
+            </button>
 
             <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/[0.075] pt-5">
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
                 <ShieldCheck className="mb-2 size-4 text-blue-200" />
                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">Auth Mode</div>
-                <div className="mt-1 text-xs text-slate-300">Local demo</div>
+                <div className="mt-1 text-xs text-slate-300">Supabase + demo</div>
               </div>
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
                 <Terminal className="mb-2 size-4 text-blue-200" />
                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">Workspace</div>
                 <div className="mt-1 text-xs text-slate-300">Live mock feed</div>
               </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 font-mono text-[10px] leading-5 text-slate-400">
+              test-observer@gmail.com / Test<br />
+              test-analyst@gmail.com / Test<br />
+              test-operator@gmail.com / Test<br />
+              test-enterprise@gmail.com / Test
             </div>
           </div>
         </motion.div>

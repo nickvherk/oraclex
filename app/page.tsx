@@ -28,6 +28,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
+import { createPendingSubscription, getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
+
 const navLinks = ["Consensus", "Terminal", "Infrastructure", "Docs"];
 
 const heroMetrics = [
@@ -113,30 +115,38 @@ const enterpriseTargets = ["Prediction Markets", "Market Makers", "Quant Funds",
 
 const standardPlans = [
   {
+    plan: "observer" as Plan,
     name: "Observer",
     price: "$8/month",
+    amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
     description: "Entry-level access to OracleX intelligence systems.",
     features: ["Delayed intelligence feed", "Basic wallet tracking", "Limited narrative watch", "Community access", "Basic consensus signals"],
   },
   {
+    plan: "analyst" as Plan,
     name: "Analyst",
     price: "$24/month",
+    amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
     description: "Advanced intelligence access for active prediction traders.",
     features: ["Real-time intelligence feed", "Wallet intelligence", "Narrative tracking", "Consensus engine access", "Advanced filtering", "Smart money signals"],
     popular: true,
   },
   {
+    plan: "operator" as Plan,
     name: "Operator",
     price: "$69/month",
+    amountUsd: 69,
     checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
     description: "Full intelligence workspace access for high-conviction operators.",
     features: ["Full terminal access", "Cross-market flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
   },
   {
+    plan: "enterprise" as Plan,
     name: "Enterprise",
     price: "Custom",
+    amountUsd: 0,
     description: "Institutional prediction intelligence infrastructure.",
     features: ["Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations", "Institutional infrastructure access"],
     enterprise: true,
@@ -556,9 +566,10 @@ function EnterpriseAccessModal({ open, onClose }: { open: boolean; onClose: () =
 function CheckoutModal({ plan, onClose }: { plan: (typeof standardPlans)[number] | null; onClose: () => void }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const open = Boolean(plan);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!email.trim()) {
@@ -567,7 +578,16 @@ function CheckoutModal({ plan, onClose }: { plan: (typeof standardPlans)[number]
     }
 
     if (plan?.checkoutLink) {
-      window.open(plan.checkoutLink, "_blank", "noopener,noreferrer");
+      setIsSubmitting(true);
+      try {
+        await createPendingSubscription({ plan: plan.plan, amountUsd: plan.amountUsd, paymentUrl: plan.checkoutLink });
+      } catch (subscriptionError) {
+        console.warn("Unable to create pending Supabase subscription before NOWPayments checkout.", subscriptionError);
+      } finally {
+        // The future NOWPayments webhook will confirm payment and set this subscription to active.
+        window.open(plan.checkoutLink, "_blank", "noopener,noreferrer");
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -634,8 +654,8 @@ function CheckoutModal({ plan, onClose }: { plan: (typeof standardPlans)[number]
                 {error}
               </div>
             ) : null}
-            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
-              Continue to Crypto Checkout
+            <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-60">
+              {isSubmitting ? "Preparing Checkout..." : "Continue to Crypto Checkout"}
               <ArrowRight className="size-4" />
             </button>
           </form>
@@ -754,17 +774,48 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSignup = authMode === "signup";
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
 
-    if (email === "test@gmail.com" && password === "Test") {
-      router.push("/terminal");
+    if (isSignup && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setIsSubmitting(false);
       return;
     }
 
-    setError("Invalid credentials. Please try again.");
+    try {
+      const session = isSignup ? await signUpWithSupabase(email, password) : await loginWithSupabase(email, password);
+
+      if (session) {
+        router.push(isSignup ? "/terminal/settings?activation=created" : "/terminal");
+        return;
+      }
+
+      setError("Account created. Check your email to confirm the account before logging in.");
+      return;
+    } catch (supabaseError) {
+      if (!isSignup) {
+        const plan = getMockPlan(email, password);
+
+        if (plan) {
+          saveMockSession(email, plan);
+          router.push("/terminal");
+          return;
+        }
+      }
+
+      setError(supabaseError instanceof Error ? supabaseError.message : "Authentication failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -800,9 +851,32 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
               PRIVATE TERMINAL
             </div>
             <h2 id="terminal-login-title" className="text-3xl font-semibold tracking-[-0.035em] text-white">
-              OracleX Terminal Login
+              {isSignup ? "Create OracleX Account" : "OracleX Terminal Login"}
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400">Enter your partner credentials to access the OracleX Intelligence Workspace.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              {isSignup ? "Create a Supabase Auth account, then choose a plan to activate terminal access." : "Use Supabase Auth, or a demo account while local plan testing remains enabled."}
+            </p>
+          </div>
+
+          <div className="mb-5 grid grid-cols-2 rounded-2xl border border-white/[0.08] bg-black/42 p-1.5">
+            {[
+              ["login", "Login"],
+              ["signup", "Create Account"],
+            ].map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setAuthMode(mode as "login" | "signup");
+                  setConfirmPassword("");
+                  setError("");
+                }}
+                className={`h-11 rounded-xl text-sm font-semibold transition duration-300 ${authMode === mode ? "border border-blue-300/24 bg-blue-300/[0.12] text-white shadow-[0_12px_38px_rgba(31,111,255,0.14)]" : "text-slate-500 hover:text-slate-300"}`}
+                aria-pressed={authMode === mode}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -820,7 +894,7 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
                   setError("");
                 }}
                 placeholder="Email"
-                autoComplete="username"
+                autoComplete={isSignup ? "email" : "username"}
                 aria-invalid={error ? "true" : undefined}
                 className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
               />
@@ -839,21 +913,48 @@ function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => v
                   setError("");
                 }}
                 placeholder="Password"
-                autoComplete="current-password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
                 aria-invalid={error ? "true" : undefined}
                 className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
               />
             </label>
+            {isSignup ? (
+              <label className="block">
+                <span className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-300">
+                  <Lock className="size-3.5 text-blue-200" />
+                  Confirm Password
+                </span>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setError("");
+                  }}
+                  placeholder="Confirm password"
+                  autoComplete="new-password"
+                  aria-invalid={error ? "true" : undefined}
+                  className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
+                />
+              </label>
+            ) : null}
             {error ? (
               <div className="rounded-xl border border-red-300/20 bg-red-300/[0.06] px-4 py-3 text-sm text-red-100" role="alert">
                 {error}
               </div>
             ) : null}
-            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
-              Enter Terminal
+            <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-70">
+              {isSubmitting ? "Authenticating..." : isSignup ? "Create Account" : "Login"}
               <ArrowRight className="size-4" />
             </button>
           </form>
+          <div className="mt-5 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 font-mono text-[10px] leading-5 text-slate-400">
+            test-observer@gmail.com / Test<br />
+            test-analyst@gmail.com / Test<br />
+            test-operator@gmail.com / Test<br />
+            test-enterprise@gmail.com / Test
+          </div>
         </div>
       </motion.div>
     </motion.div>

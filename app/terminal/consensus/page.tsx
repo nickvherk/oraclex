@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle, BrainCircuit, CircleDot, GitBranch, Radar, ShieldCheck, TrendingDown, TrendingUp, Zap } from "lucide-react";
 
 import { BiasBadge, Panel, PanelHeader } from "@/components/terminal/terminal-shell";
+import { FeatureGate } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 
@@ -50,6 +51,14 @@ function agreementTone(value: number) {
 }
 
 export default function ConsensusPage() {
+  return (
+    <FeatureGate feature="consensusEngine" explanation="The full Consensus Engine requires Analyst access or higher. Observer accounts can still view basic consensus signals in the Live Feed.">
+      <ConsensusWorkspace />
+    </FeatureGate>
+  );
+}
+
+function ConsensusWorkspace() {
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="grid min-w-0 gap-4">

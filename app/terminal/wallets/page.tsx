@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BrainCircuit, Check, ChevronDown, Copy, Network, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { ArrowRight, BrainCircuit, Check, ChevronDown, Copy, Lock, Network, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
+import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
+import { useCurrentPlan } from "@/lib/access-control";
 
 const TRACKED_WALLET_UNIVERSE = 12480;
 const SMART_MONEY_WALLETS = 1250;
@@ -370,6 +372,111 @@ function SelectControl<T extends string>({ label, value, options, onChange }: { 
 }
 
 export default function WalletIntelligencePage() {
+  return (
+    <FeatureGate feature="walletIntelligence" explanation="Wallet Intelligence starts at Observer access. Sign in with a demo account or upgrade your plan.">
+      <WalletIntelligenceByPlan />
+    </FeatureGate>
+  );
+}
+
+function WalletIntelligenceByPlan() {
+  const { plan } = useCurrentPlan();
+
+  if (plan === "observer") {
+    return <ObserverWalletIntelligence />;
+  }
+
+  return <FullWalletIntelligencePage />;
+}
+
+function ObserverWalletIntelligence() {
+  const basicWallets = wallets.slice(0, 5);
+  const totalVolume = basicWallets.reduce((sum, wallet) => sum + wallet.volume, 0);
+
+  return (
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4">
+        <section className="rounded-xl border border-white/[0.075] bg-[#070b14]/86 p-4">
+          <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Observer wallet summary</Badge>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">Basic Wallet Intelligence</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Observer access includes a limited view of top wallet behavior, active volume, and basic smart money bias. Advanced filters and full wallet analytics require Analyst access.</p>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {[
+              ["Visible wallet rows", `${basicWallets.length}`],
+              ["Tracked sample volume", money(totalVolume)],
+              ["Current bias", "YES-heavy"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-white/[0.065] bg-white/[0.025] px-3 py-2">
+                <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-600">{label}</div>
+                <div className="mt-1 font-mono text-sm text-white">{value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <Panel>
+          <PanelHeader title="Basic Wallet Rows" action="5 row preview" />
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                <tr>{["Wallet", "Category", "Volume", "Win Rate", "ROI", "Bias", "Last Active"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+              </thead>
+              <tbody>
+                {basicWallets.map((wallet) => (
+                  <tr key={wallet.wallet} className="border-b border-white/[0.055]">
+                    <td className="px-4 py-3 font-mono text-blue-100">{shortWallet(wallet.wallet)}</td>
+                    <td className="px-4 py-3 text-slate-300">{wallet.category}</td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{money(wallet.volume)}</td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{wallet.winRate}%</td>
+                    <td className="px-4 py-3 font-mono text-emerald-200">{wallet.roi.toFixed(1)}%</td>
+                    <td className="px-4 py-3"><BiasBadge bias={badgeBias(wallet.bias)} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{wallet.lastActive}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Panel>
+
+        <Panel>
+          <PanelHeader title="Detailed Wallet Insights" action="Analyst" />
+          <CardContent className="grid gap-3 p-4 md:grid-cols-2">
+            {["Advanced filters", "Wallet clusters", "Early signal scores", "Full wallet universe", "Smart money consensus"].map((feature) => (
+              <div key={feature} className="relative min-h-40 overflow-hidden rounded-xl border border-white/[0.075] bg-black/28 p-4">
+                <div className="blur-[2px]">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">{feature}</div>
+                  <div className="mt-3 h-2 w-2/3 rounded-full bg-blue-300/20" />
+                  <div className="mt-2 h-2 w-1/2 rounded-full bg-white/10" />
+                  <div className="mt-5 font-mono text-2xl text-white">--</div>
+                </div>
+                <PremiumLockedOverlay copy="Unlock full Wallet Intelligence with Analyst" />
+              </div>
+            ))}
+          </CardContent>
+        </Panel>
+      </div>
+
+      <aside className="grid gap-4 2xl:sticky 2xl:top-5 2xl:self-start">
+        <Panel>
+          <PanelHeader title="Advanced Wallet Filters" action="Analyst" />
+          <CardContent className="p-4">
+            <div className="mb-4 grid size-11 place-items-center rounded-xl border border-blue-300/18 bg-blue-300/[0.07] text-blue-100">
+              <Lock className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">Unlock full wallet analytics</h2>
+            <p className="mt-2 text-xs leading-6 text-slate-400">Analyst access unlocks advanced filters, smart money signals, wallet clusters, evidence stacks, and full table controls.</p>
+            <button type="button" onClick={() => window.location.assign("/terminal/settings")} className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-blue-300/45 bg-[#1f6fff] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3b82f6]">
+              Upgrade Access
+              <ArrowRight className="size-4" />
+            </button>
+          </CardContent>
+        </Panel>
+      </aside>
+    </div>
+  );
+}
+
+function FullWalletIntelligencePage() {
   const [group, setGroup] = useState<WalletGroup>("Top 50");
   const [category, setCategory] = useState<Category>("All");
   const [bias, setBias] = useState<Bias>("All");

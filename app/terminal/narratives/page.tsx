@@ -1,11 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, CircleDot, Flame, Globe2, Users, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CircleDot, Flame, Globe2, Lock, Users, Wallet } from "lucide-react";
 
+import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
 import { BiasBadge, Panel, PanelHeader } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
+import { useCurrentPlan } from "@/lib/access-control";
 
 const narratives = [
   { name: "SOL ETF Momentum", velocity: "+38%", ratio: "72/28", confidence: 92, kol: "48", wallet: "$3.8M", impact: "+6.4 pts", direction: "up", score: 94, bias: "Bullish" },
@@ -50,6 +52,115 @@ function heatTone(type: string) {
 }
 
 export default function NarrativesPage() {
+  return (
+    <FeatureGate feature="narrativeWatch" explanation="Narrative Watch starts at Observer access. Sign in with a demo account or upgrade your plan.">
+      <NarrativeWatchByPlan />
+    </FeatureGate>
+  );
+}
+
+function NarrativeWatchByPlan() {
+  const { plan } = useCurrentPlan();
+
+  if (plan === "observer") {
+    return <ObserverNarrativeWatch />;
+  }
+
+  return <FullNarrativesPage />;
+}
+
+function ObserverNarrativeWatch() {
+  return (
+    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4">
+        <section className="rounded-xl border border-white/[0.075] bg-[#070b14]/86 p-4">
+          <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Observer narrative feed</Badge>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">Limited Narrative Watch</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Observer access includes the basic narrative feed and top-level momentum. Full analytics, heatmaps, influencing accounts, and market impact analysis require Analyst access.</p>
+        </section>
+
+        <Panel>
+          <PanelHeader title="Limited Narrative Feed" action="Basic" />
+          <CardContent className="space-y-2 p-4">
+            {feed.slice(0, 3).map(([time, text, value]) => (
+              <div key={time} className="flex items-start gap-3 rounded-xl border border-white/[0.065] bg-black/28 p-3">
+                <CircleDot className="mt-0.5 size-3.5 text-blue-200" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-mono text-[10px] text-slate-600">{time}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-300">{text}</div>
+                </div>
+                <span className="font-mono text-[10px] text-blue-200">{value}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Panel>
+
+        <Panel>
+          <PanelHeader title="Top Narratives" action="Limited" />
+          <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+            {narratives.slice(0, 3).map((narrative) => (
+              <div key={narrative.name} className="rounded-xl border border-white/[0.075] bg-black/28 p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-white">{narrative.name}</h2>
+                  <BiasBadge bias={narrative.bias} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg bg-white/[0.035] p-2">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">Velocity</div>
+                    <div className="mt-1 font-mono text-slate-200">{narrative.velocity}</div>
+                  </div>
+                  <div className="rounded-lg bg-white/[0.035] p-2">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">Score</div>
+                    <div className="mt-1 font-mono text-slate-200">{narrative.score}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Panel>
+
+        <Panel>
+          <PanelHeader title="Detailed Narrative Analytics" action="Analyst" />
+          <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+            {["Narrative heatmap", "Market impact analysis", "Influencing accounts"].map((feature) => (
+              <div key={feature} className="relative min-h-40 overflow-hidden rounded-xl border border-white/[0.075] bg-black/28 p-4">
+                <div className="blur-[2px]">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">{feature}</div>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <span className="h-12 rounded-lg bg-emerald-300/[0.09]" />
+                    <span className="h-12 rounded-lg bg-blue-300/[0.1]" />
+                    <span className="h-12 rounded-lg bg-amber-300/[0.08]" />
+                  </div>
+                  <div className="mt-4 h-2 w-2/3 rounded-full bg-white/10" />
+                </div>
+                <PremiumLockedOverlay copy="Unlock full Narrative Watch with Analyst" />
+              </div>
+            ))}
+          </CardContent>
+        </Panel>
+      </div>
+
+      <aside className="grid gap-4 2xl:sticky 2xl:top-5 2xl:self-start">
+        <Panel>
+          <PanelHeader title="Full Narrative Analytics" action="Analyst" />
+          <CardContent className="p-4">
+            <div className="mb-4 grid size-11 place-items-center rounded-xl border border-blue-300/18 bg-blue-300/[0.07] text-blue-100">
+              <Lock className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">Unlock market impact analysis</h2>
+            <p className="mt-2 text-xs leading-6 text-slate-400">Analyst access unlocks narrative heatmaps, influencing accounts, velocity history, and full narrative analytics.</p>
+            <button type="button" onClick={() => window.location.assign("/terminal/settings")} className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-blue-300/45 bg-[#1f6fff] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3b82f6]">
+              Upgrade Access
+              <ArrowRight className="size-4" />
+            </button>
+          </CardContent>
+        </Panel>
+      </aside>
+    </div>
+  );
+}
+
+function FullNarrativesPage() {
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="grid min-w-0 gap-4">
