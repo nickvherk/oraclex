@@ -6,6 +6,7 @@ import {
   Bot,
   BrainCircuit,
   Building2,
+  Check,
   CircleDot,
   Database,
   Gauge,
@@ -18,6 +19,7 @@ import {
   ScanLine,
   Server,
   ShieldCheck,
+  Sparkles,
   Terminal,
   WalletCards,
   X,
@@ -108,6 +110,40 @@ const pipelineSteps = [
 ];
 
 const enterpriseTargets = ["Prediction Markets", "Market Makers", "Quant Funds", "AI Trading Systems", "Sportsbooks"];
+
+const standardPlans = [
+  {
+    name: "Observer",
+    price: "$8/month",
+    checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
+    description: "Entry-level access to OracleX intelligence systems.",
+    features: ["Delayed intelligence feed", "Basic wallet tracking", "Limited narrative watch", "Community access", "Basic consensus signals"],
+  },
+  {
+    name: "Analyst",
+    price: "$24/month",
+    checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
+    description: "Advanced intelligence access for active prediction traders.",
+    features: ["Real-time intelligence feed", "Wallet intelligence", "Narrative tracking", "Consensus engine access", "Advanced filtering", "Smart money signals"],
+    popular: true,
+  },
+  {
+    name: "Operator",
+    price: "$69/month",
+    checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
+    description: "Full intelligence workspace access for high-conviction operators.",
+    features: ["Full terminal access", "Cross-market flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    description: "Institutional prediction intelligence infrastructure.",
+    features: ["Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations", "Institutional infrastructure access"],
+    enterprise: true,
+  },
+];
+
+const enterpriseAccess = ["Intelligence APIs", "Consensus feeds", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
 
 const fadeUp = {
   initial: { opacity: 0, y: 18 },
@@ -456,6 +492,264 @@ function Infrastructure() {
   );
 }
 
+function EnterpriseAccessModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <motion.div className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-8" initial={false} animate={open ? "open" : "closed"} variants={{ open: { pointerEvents: "auto" }, closed: { pointerEvents: "none" } }}>
+      <motion.button type="button" aria-label="Close enterprise access request" className="absolute inset-0 bg-black/76 backdrop-blur-xl" onClick={onClose} variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }} transition={{ duration: 0.28, ease: "easeOut" }} />
+      <motion.div
+        className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-blue-200/15 bg-[#050914]/95 shadow-[0_40px_120px_rgba(0,0,0,0.72)] ring-1 ring-blue-300/[0.08]"
+        variants={{ open: { opacity: 1, y: 0, scale: 1 }, closed: { opacity: 0, y: 22, scale: 0.97 } }}
+        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="enterprise-access-title"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(31,111,255,0.24),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_42%)]" />
+        <div className="relative border-b border-white/[0.075] px-6 py-5 sm:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.075] text-blue-200">
+                <Server className="size-5" />
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">ENTERPRISE ACCESS</span>
+            </div>
+            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
+          <div className="mb-7">
+            <h2 id="enterprise-access-title" className="text-3xl font-semibold tracking-[-0.035em] text-white">
+              Request OracleX infrastructure access
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Tell us how your team plans to use OracleX prediction intelligence infrastructure.</p>
+          </div>
+
+          <form className="space-y-4" onSubmit={(event) => event.preventDefault()}>
+            {[
+              ["email", "Email", "email", "name@company.com"],
+              ["company", "Company", "text", "Company"],
+              ["role", "Role", "text", "Founder, PM, quant, infrastructure lead"],
+            ].map(([id, label, type, placeholder]) => (
+              <label key={id} className="block">
+                <span className="mb-2 block text-xs font-medium text-slate-300">{label}</span>
+                <input id={id} name={id} type={type} required className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]" placeholder={placeholder} />
+              </label>
+            ))}
+            <label className="block">
+              <span className="mb-2 block text-xs font-medium text-slate-300">Message</span>
+              <textarea name="message" required rows={4} className="w-full resize-none rounded-xl border border-white/[0.08] bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]" placeholder="Markets, feeds, latency needs, integrations, or deployment context" />
+            </label>
+            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
+              Request Access
+              <ArrowRight className="size-4" />
+            </button>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function CheckoutModal({ plan, onClose }: { plan: (typeof standardPlans)[number] | null; onClose: () => void }) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const open = Boolean(plan);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!email.trim()) {
+      setError("Please enter your email before continuing.");
+      return;
+    }
+
+    if (plan?.checkoutLink) {
+      window.open(plan.checkoutLink, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  return (
+    <motion.div className="fixed inset-0 z-[95] flex items-center justify-center px-4 py-8" initial={false} animate={open ? "open" : "closed"} variants={{ open: { pointerEvents: "auto" }, closed: { pointerEvents: "none" } }}>
+      <motion.button type="button" aria-label="Close crypto checkout" className="absolute inset-0 bg-black/76 backdrop-blur-xl" onClick={onClose} variants={{ open: { opacity: 1 }, closed: { opacity: 0 } }} transition={{ duration: 0.28, ease: "easeOut" }} />
+      <motion.div
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-200/15 bg-[#050914]/95 shadow-[0_40px_120px_rgba(0,0,0,0.72)] ring-1 ring-blue-300/[0.08]"
+        variants={{ open: { opacity: 1, y: 0, scale: 1 }, closed: { opacity: 0, y: 22, scale: 0.97 } }}
+        transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-title"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(31,111,255,0.24),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_42%)]" />
+        <div className="relative border-b border-white/[0.075] px-6 py-5 sm:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.075] text-blue-200">
+                <Terminal className="size-5" />
+              </span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">CRYPTO CHECKOUT</span>
+            </div>
+            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative px-6 py-7 sm:px-8 sm:py-8">
+          <div className="mb-7">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-xl border border-blue-300/15 bg-blue-300/[0.055] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-blue-100">
+              <Sparkles className="size-3.5" />
+              OracleX access
+            </div>
+            <h2 id="checkout-title" className="text-3xl font-semibold tracking-[-0.035em] text-white">
+              {plan?.name ?? "Access Level"}
+            </h2>
+            <div className="mt-3 font-mono text-4xl font-medium tracking-[-0.06em] text-white">{plan?.price ?? ""}</div>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-300">
+                <Mail className="size-3.5 text-blue-200" />
+                Email
+              </span>
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError("");
+                }}
+                placeholder="name@email.com"
+                autoComplete="email"
+                aria-invalid={error ? "true" : undefined}
+                className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/35 px-4 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]"
+              />
+            </label>
+            <p className="rounded-xl border border-blue-300/14 bg-blue-300/[0.055] px-4 py-3 text-sm leading-6 text-blue-100/86">Crypto payments are processed securely through NOWPayments.</p>
+            {error ? (
+              <div className="rounded-xl border border-red-300/20 bg-red-300/[0.06] px-4 py-3 text-sm text-red-100" role="alert">
+                {error}
+              </div>
+            ) : null}
+            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
+              Continue to Crypto Checkout
+              <ArrowRight className="size-4" />
+            </button>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function PricingSection() {
+  const [accessMode, setAccessMode] = useState<"standard" | "enterprise">("standard");
+  const [isEnterpriseAccessOpen, setIsEnterpriseAccessOpen] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<(typeof standardPlans)[number] | null>(null);
+
+  return (
+    <section id="pricing" className="relative border-y border-white/[0.075] bg-[linear-gradient(180deg,rgba(3,6,13,0.72),rgba(31,111,255,0.045),rgba(3,6,13,0.82))] px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/35 to-transparent" />
+      <div className="mx-auto max-w-7xl">
+        <motion.div {...fadeUp} className="mb-12 flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
+          <div className="max-w-3xl">
+            <Label>OracleX Terminal</Label>
+            <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Intelligence Access</h2>
+            <p className="mt-6 max-w-2xl text-[17px] leading-8 text-slate-300/90">Choose the level of OracleX prediction intelligence access that fits your workflow.</p>
+          </div>
+          <div className="relative grid w-full max-w-sm grid-cols-2 rounded-2xl border border-white/[0.08] bg-black/42 p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.28)] ring-1 ring-blue-300/[0.04]">
+            <motion.span className="absolute bottom-1.5 left-1.5 top-1.5 w-[calc(50%-0.375rem)] rounded-xl border border-blue-300/24 bg-blue-300/[0.12] shadow-[0_12px_38px_rgba(31,111,255,0.16)]" animate={{ x: accessMode === "standard" ? 0 : "100%" }} transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }} />
+            {(["standard", "enterprise"] as const).map((mode) => (
+              <button key={mode} type="button" onClick={() => setAccessMode(mode)} className={`relative z-10 h-11 rounded-xl text-sm font-semibold transition duration-300 ${accessMode === mode ? "text-white" : "text-slate-500 hover:text-slate-300"}`}>
+                {mode === "standard" ? "Standard" : "Enterprise"}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div layout className="min-h-[540px]">
+          {accessMode === "standard" ? (
+            <motion.div key="standard-pricing" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: "easeOut" }} className="grid gap-4 lg:grid-cols-4">
+              {standardPlans.map((plan, index) => (
+                <motion.div
+                  key={plan.name}
+                  {...fadeUp}
+                  transition={{ ...fadeUp.transition, delay: index * 0.06 }}
+                  className={`group relative flex min-h-[520px] flex-col overflow-hidden rounded-3xl border p-6 transition duration-500 hover:-translate-y-1 sm:p-7 ${
+                    plan.popular
+                      ? "border-blue-200/32 bg-[linear-gradient(180deg,rgba(31,111,255,0.22),rgba(255,255,255,0.055)_34%,rgba(0,0,0,0.2))] shadow-[0_34px_100px_rgba(31,111,255,0.18)]"
+                      : plan.enterprise
+                        ? "border-blue-300/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(31,111,255,0.04)_48%,rgba(0,0,0,0.2))]"
+                        : "border-white/[0.085] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.026)_42%,rgba(0,0,0,0.18))]"
+                  } hover:border-blue-300/32`}
+                >
+                  <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/45 to-transparent opacity-70" />
+                  {plan.popular ? (
+                    <div className="mb-5 inline-flex w-fit items-center gap-2 rounded-xl border border-blue-200/25 bg-blue-300/[0.11] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-blue-100">
+                      <Sparkles className="size-3.5" />
+                      Popular
+                    </div>
+                  ) : (
+                    <div className="mb-5 h-8" />
+                  )}
+                  <h3 className="text-2xl font-medium tracking-[-0.025em] text-white">{plan.name}</h3>
+                  <div className="mt-5 font-mono text-4xl font-medium tracking-[-0.06em] text-white">{plan.price}</div>
+                  <p className="mt-5 min-h-16 text-sm leading-6 text-slate-400/95">{plan.description}</p>
+                  <div className="mt-7 h-px bg-white/[0.075]" />
+                  <div className="mt-7 flex flex-1 flex-col gap-3.5">
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-start gap-3 text-sm leading-5 text-slate-300">
+                        <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-blue-300/18 bg-blue-300/[0.07] text-blue-200">
+                          <Check className="size-3.5" />
+                        </span>
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => (plan.enterprise ? setIsEnterpriseAccessOpen(true) : setCheckoutPlan(plan))} className={`mt-8 inline-flex h-12 items-center justify-center rounded-xl border px-5 text-[13px] font-semibold transition duration-500 ${plan.popular ? "border-blue-300/45 bg-[#1f6fff] text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] hover:bg-[#3b82f6]" : "border-white/[0.09] bg-white/[0.04] text-slate-100 hover:border-blue-300/26 hover:bg-blue-300/[0.08]"}`}>
+                    {plan.enterprise ? "Request Access" : "Enter Access Level"}
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div key="enterprise-pricing" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, ease: "easeOut" }} className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+              <div className="relative overflow-hidden rounded-3xl border border-blue-200/18 bg-[linear-gradient(180deg,rgba(31,111,255,0.15),rgba(255,255,255,0.045)_42%,rgba(0,0,0,0.24))] p-8 shadow-[0_34px_100px_rgba(0,0,0,0.28)] sm:p-10">
+                <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/45 to-transparent" />
+                <Label>B2B Infrastructure</Label>
+                <h3 className="max-w-2xl text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Enterprise Intelligence Infrastructure</h3>
+                <p className="mt-7 max-w-2xl text-[17px] leading-8 text-slate-300/90">OracleX provides institutional-grade prediction intelligence infrastructure for market platforms, quant firms, sportsbooks, and AI trading systems.</p>
+                <button type="button" onClick={() => setIsEnterpriseAccessOpen(true)} className="mt-10 inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:-translate-y-0.5 hover:bg-[#3b82f6]">
+                  Request Enterprise Access
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {enterpriseAccess.map((item, index) => (
+                  <motion.div key={item} className="group flex min-h-36 flex-col justify-between rounded-2xl border border-white/[0.085] bg-white/[0.035] p-6 transition duration-500 hover:-translate-y-1 hover:border-blue-300/24 hover:bg-blue-300/[0.045]" whileHover={{ y: -4 }} transition={{ duration: 0.4 }}>
+                    <div className="flex items-center justify-between">
+                      <span className="grid size-11 place-items-center rounded-2xl border border-blue-300/18 bg-blue-300/[0.07] text-blue-200">
+                        {index % 3 === 0 ? <Server className="size-5" /> : index % 3 === 1 ? <BrainCircuit className="size-5" /> : <RadioTower className="size-5" />}
+                      </span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-600">0{index + 1}</span>
+                    </div>
+                    <h4 className="mt-8 text-xl font-medium tracking-[-0.02em] text-white">{item}</h4>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
+      <CheckoutModal key={checkoutPlan?.name ?? "checkout"} plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />
+      <EnterpriseAccessModal open={isEnterpriseAccessOpen} onClose={() => setIsEnterpriseAccessOpen(false)} />
+    </section>
+  );
+}
+
 function EnterTerminalModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -626,6 +920,7 @@ export default function Home() {
         <IntelligenceTerminal />
         <WhyOracleX />
         <Infrastructure />
+        <PricingSection />
 
         <section className="px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
           <motion.div {...fadeUp} className="mx-auto max-w-5xl rounded-2xl border border-blue-300/20 bg-blue-300/[0.045] p-8 text-center shadow-[0_34px_90px_rgba(0,0,0,0.26)] sm:p-16">
