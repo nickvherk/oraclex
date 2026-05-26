@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, BrainCircuit, Check, ChevronDown, Copy, Lock, Network, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
@@ -63,6 +63,18 @@ type WalletRecord = {
   entries: string[];
   activeMarketsList: string[];
   interpretation: string;
+};
+
+type WalletIntelligencePayload = {
+  stats: {
+    trackedWalletUniverse: number;
+    smartMoneyWallets: number;
+    activeWallets: number;
+  };
+  wallets: WalletRecord[];
+  consensusInsights: typeof consensusInsights;
+  clusters: typeof clusters;
+  questionExamples: typeof questionExamples;
 };
 
 const wallets: WalletRecord[] = [
@@ -371,6 +383,50 @@ function SelectControl<T extends string>({ label, value, options, onChange }: { 
   );
 }
 
+function isWalletIntelligencePayload(value: unknown): value is WalletIntelligencePayload {
+  if (!value || typeof value !== "object" || !("wallets" in value)) return false;
+  const payload = value as Partial<WalletIntelligencePayload>;
+  return Array.isArray(payload.wallets) && payload.wallets.every((wallet) => wallet && typeof wallet === "object" && typeof (wallet as WalletRecord).wallet === "string");
+}
+
+function useWalletIntelligenceData() {
+  const [data, setData] = useState<WalletIntelligencePayload | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/wallet-intelligence")
+      .then((response) => {
+        if (!response.ok) throw new Error("Wallet intelligence API failed");
+        return response.json() as Promise<unknown>;
+      })
+      .then((payload) => {
+        if (!cancelled && isWalletIntelligencePayload(payload)) {
+          setData(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return {
+    stats: data?.stats ?? {
+      trackedWalletUniverse: TRACKED_WALLET_UNIVERSE,
+      smartMoneyWallets: SMART_MONEY_WALLETS,
+      activeWallets: ACTIVE_WALLETS,
+    },
+    wallets: data?.wallets ?? wallets,
+    consensusInsights: data?.consensusInsights ?? consensusInsights,
+    clusters: data?.clusters ?? clusters,
+    questionExamples: data?.questionExamples ?? questionExamples,
+  };
+}
+
 export default function WalletIntelligencePage() {
   return (
     <FeatureGate feature="walletIntelligence" explanation="Wallet Intelligence starts at Observer access. Sign in with a demo account or upgrade your plan.">
@@ -381,16 +437,17 @@ export default function WalletIntelligencePage() {
 
 function WalletIntelligenceByPlan() {
   const { plan } = useCurrentPlan();
+  const walletData = useWalletIntelligenceData();
 
   if (plan === "observer") {
-    return <ObserverWalletIntelligence />;
+    return <ObserverWalletIntelligence walletData={walletData} />;
   }
 
-  return <FullWalletIntelligencePage />;
+  return <FullWalletIntelligencePage walletData={walletData} />;
 }
 
-function ObserverWalletIntelligence() {
-  const basicWallets = wallets.slice(0, 5);
+function ObserverWalletIntelligence({ walletData }: { walletData: ReturnType<typeof useWalletIntelligenceData> }) {
+  const basicWallets = walletData.wallets.slice(0, 5);
   const totalVolume = basicWallets.reduce((sum, wallet) => sum + wallet.volume, 0);
 
   return (
@@ -476,7 +533,7 @@ function ObserverWalletIntelligence() {
   );
 }
 
-function FullWalletIntelligencePage() {
+function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typeof useWalletIntelligenceData> }) {
   const [group, setGroup] = useState<WalletGroup>("Top 50");
   const [category, setCategory] = useState<Category>("All");
   const [bias, setBias] = useState<Bias>("All");
@@ -493,15 +550,17 @@ function FullWalletIntelligencePage() {
   const [minActivePositions, setMinActivePositions] = useState(1);
   const [query, setQuery] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState(wallets[0]);
+  const [selectedWalletAddress, setSelectedWalletAddress] = useState(walletData.wallets[0].wallet);
   const [copied, setCopied] = useState(false);
+  const pageWallets = walletData.wallets.length ? walletData.wallets : wallets;
+  const selectedWallet = pageWallets.find((wallet) => wallet.wallet === selectedWalletAddress) ?? pageWallets[0];
 
   const sortKey: SortKey = sort === "ROI" ? "roi" : sort === "Win Rate" ? "winRate" : sort === "Volume" ? "volume" : sort === "Early Signal" ? "earlySignal" : sort === "Divergence" ? "divergence" : "conviction";
   const positionThreshold = positionSize === "$1M+" ? 1000000 : positionSize === "$500K+" ? 500000 : positionSize === "$250K+" ? 250000 : positionSize === "$100K+" ? 100000 : 0;
 
   const filteredWallets = useMemo(() => {
     const groupLimit = group.startsWith("Top") ? Number(group.replace("Top ", "")) : 500;
-    return wallets
+    return pageWallets
       .filter((wallet) => wallet.rank <= groupLimit)
       .filter((wallet) => category === "All" || wallet.category === category)
       .filter((wallet) => bias === "All" || wallet.bias === bias)
@@ -518,9 +577,9 @@ function FullWalletIntelligencePage() {
       .filter((wallet) => walletTag === "All Tags" || wallet.specialization.toLowerCase().includes(walletTag.split(" ")[0].toLowerCase()) || wallet.tag.toLowerCase().includes(walletTag.split(" ")[0].toLowerCase()))
       .filter((wallet) => !query || [wallet.wallet, wallet.tag, wallet.category, wallet.group, wallet.specialization, wallet.lastPosition].join(" ").toLowerCase().includes(query.toLowerCase()))
       .sort((a, b) => b[sortKey] - a[sortKey]);
-  }, [bias, category, group, marketType, minActivePositions, minRoi, minVolume, minWinRate, positionThreshold, query, signalType, sortKey, walletTag]);
+  }, [bias, category, group, marketType, minActivePositions, minRoi, minVolume, minWinRate, pageWallets, positionThreshold, query, signalType, sortKey, walletTag]);
 
-  const displayedWallets = filteredWallets.length ? filteredWallets : wallets;
+  const displayedWallets = filteredWallets.length ? filteredWallets : pageWallets;
   const summaryVolume = displayedWallets.reduce((sum, wallet) => sum + wallet.volume, 0);
   const yes = displayedWallets.filter((wallet) => wallet.bias === "YES-heavy").length;
   const no = displayedWallets.filter((wallet) => wallet.bias === "NO-heavy").length;
@@ -573,16 +632,16 @@ function FullWalletIntelligencePage() {
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX tracks a large universe of top Polymarket wallets, category specialists, smart money clusters, and repeat winners to turn wallet behavior into data-backed intelligence.</p>
             </div>
             <div className="grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
-              <span>12,480 wallets</span>
+              <span>{walletData.stats.trackedWalletUniverse.toLocaleString()} wallets</span>
               <span>Category universes</span>
               <span>Explainable</span>
             </div>
           </div>
           <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
             {[
-              ["Tracked Wallet Universe", TRACKED_WALLET_UNIVERSE.toLocaleString()],
-              ["Active Wallets", ACTIVE_WALLETS.toLocaleString()],
-              ["Smart Money Wallets", SMART_MONEY_WALLETS.toLocaleString()],
+              ["Tracked Wallet Universe", walletData.stats.trackedWalletUniverse.toLocaleString()],
+              ["Active Wallets", walletData.stats.activeWallets.toLocaleString()],
+              ["Smart Money Wallets", walletData.stats.smartMoneyWallets.toLocaleString()],
               ["Tracked Volume", money(summaryVolume)],
               ["Current Smart Money Bias", currentBias],
               ["Divergence Alerts", `${divergenceAlerts}`],
@@ -652,7 +711,7 @@ function FullWalletIntelligencePage() {
         </Panel>
 
         <Panel>
-          <PanelHeader title="Smart Money Wallet Table" action={`showing 1-${Math.min(50, displayedWallets.length)} of ${TRACKED_WALLET_UNIVERSE.toLocaleString()} wallets`} />
+          <PanelHeader title="Smart Money Wallet Table" action={`showing 1-${Math.min(50, displayedWallets.length)} of ${walletData.stats.trackedWalletUniverse.toLocaleString()} wallets`} />
           <CardContent className="overflow-x-auto p-0">
             <table className="w-full min-w-[1320px] text-left text-xs">
               <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
@@ -664,7 +723,7 @@ function FullWalletIntelligencePage() {
               </thead>
               <tbody>
                 {displayedWallets.map((wallet) => (
-                  <tr key={wallet.wallet} onClick={() => setSelectedWallet(wallet)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${selectedWallet.wallet === wallet.wallet ? "bg-blue-300/[0.06]" : ""}`}>
+                  <tr key={wallet.wallet} onClick={() => setSelectedWalletAddress(wallet.wallet)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${selectedWallet.wallet === wallet.wallet ? "bg-blue-300/[0.06]" : ""}`}>
                     <td className="px-4 py-3">
                       <div className="font-mono text-blue-100">{shortWallet(wallet.wallet)}</div>
                       <div className="mt-1 font-mono text-[10px] text-slate-600">{wallet.tag}</div>
@@ -688,8 +747,8 @@ function FullWalletIntelligencePage() {
               </tbody>
             </table>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.075] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
-              <span>Showing 1-{Math.min(50, displayedWallets.length)} of {TRACKED_WALLET_UNIVERSE.toLocaleString()} tracked wallets</span>
-              <span>Selected filter universe: {ACTIVE_WALLETS.toLocaleString()} active wallets</span>
+              <span>Showing 1-{Math.min(50, displayedWallets.length)} of {walletData.stats.trackedWalletUniverse.toLocaleString()} tracked wallets</span>
+              <span>Selected filter universe: {walletData.stats.activeWallets.toLocaleString()} active wallets</span>
             </div>
           </CardContent>
         </Panel>
@@ -697,7 +756,7 @@ function FullWalletIntelligencePage() {
         <Panel>
           <PanelHeader title="Smart Money Consensus" action="Data-backed aggregate signals" />
           <CardContent className="grid gap-3 p-4 xl:grid-cols-2">
-            {consensusInsights.map((item) => (
+            {walletData.consensusInsights.map((item) => (
               <div key={item.segment} className="rounded-xl border border-white/[0.07] bg-black/25 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-white">{item.segment}</div>
@@ -720,14 +779,14 @@ function FullWalletIntelligencePage() {
           <Panel>
             <PanelHeader title="Questions OracleX Answers" action="Category-specific" />
             <CardContent className="space-y-2 p-4">
-              {questionExamples.map((question) => <div key={question} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs text-slate-300">{question}</div>)}
+              {walletData.questionExamples.map((question) => <div key={question} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs text-slate-300">{question}</div>)}
             </CardContent>
           </Panel>
 
           <Panel>
             <PanelHeader title="Wallet Cluster Detection" action="Premium intelligence" />
             <CardContent className="space-y-3 p-4">
-              {clusters.map((cluster) => (
+              {walletData.clusters.map((cluster) => (
                 <div key={cluster.title} className="rounded-xl border border-white/[0.07] bg-black/25 p-4">
                   <div className="mb-2 flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-white"><Network className="size-4 text-blue-200" />{cluster.title}</div>
