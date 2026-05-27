@@ -11,7 +11,6 @@ import {
   Database,
   Gauge,
   Globe2,
-  LineChart,
   Lock,
   Mail,
   Network,
@@ -26,14 +25,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 
 import { getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
 const DOCS_URL = "https://oracle-x-2.gitbook.io/oraclex-documentation/";
 const X_URL = "https://x.com/oraclexterminal";
 
-const navLinks = ["Consensus", "Terminal", "Infrastructure", "Docs"];
+const navLinks = [
+  { label: "Consensus", href: "#consensus" },
+  { label: "Terminal", href: "#terminal" },
+  { label: "Infrastructure", href: "#infrastructure" },
+  { label: "Why OracleX", href: "/why-oraclex" },
+  { label: "Docs", href: DOCS_URL, external: true },
+];
 
 const heroMetrics = [
   ["128", "Markets Scanned"],
@@ -67,12 +72,6 @@ const markets = [
   ["AI Narrative Momentum", "81.3%", "+18.4%", "High velocity"],
 ];
 
-const proofCards = [
-  ["Prediction Intelligence", "Probability feeds built from market, wallet, narrative, liquidity, news, and agent signals.", LineChart],
-  ["AI Consensus Infrastructure", "Competing agents publish confidence-weighted views into a single Oracle Consensus Score.", BrainCircuit],
-  ["Enterprise Intelligence APIs", "Infrastructure-grade APIs for markets, trading systems, desks, and autonomous agents.", Server],
-];
-
 const infrastructure = [
   "prediction markets",
   "AI trading systems",
@@ -87,34 +86,53 @@ const infrastructureIcons = [Building2, Bot, Gauge, ShieldCheck, Database, Radio
 const pipelineSteps = [
   {
     label: "01",
-    eyebrow: "Live signal ingestion",
-    groupLabel: "Signals",
-    title: "OracleX ingests live market intelligence",
-    description: "OracleX continuously monitors prediction markets, social narratives, wallets, liquidity flows, and breaking news in real time.",
-    items: ["prediction markets", "social narratives", "whale wallets", "liquidity flows", "news events"],
+    eyebrow: "Signal ingestion",
+    title: "Market telemetry grid",
+    metric: "2.1M",
+    metricLabel: "daily signals",
+    items: ["1,284 markets monitored", "12,400+ wallets tracked", "418 narrative clusters", "73 liquidity venues"],
     Icon: Database,
   },
   {
     label: "02",
-    eyebrow: "Agent consensus layer",
-    groupLabel: "Signals",
-    title: "AI agents generate consensus",
-    description: "Specialized AI agents analyze momentum, volatility, truth confidence, narrative shifts, and market manipulation signals across global events.",
-    items: ["momentum analysis", "truth verification", "volatility detection", "narrative tracking", "consensus modeling"],
+    eyebrow: "Consensus engine",
+    title: "Agent arbitration layer",
+    metric: "8.4s",
+    metricLabel: "intelligence latency",
+    items: ["24/7 AI consensus", "87.4 consensus score", "9 active model families", "0.92 signal confidence"],
     Icon: BrainCircuit,
   },
   {
     label: "03",
     eyebrow: "Enterprise output layer",
-    groupLabel: "Outputs",
-    title: "OracleX publishes intelligence",
-    description: "OracleX transforms fragmented signals into probability intelligence, consensus scores, market alerts, and enterprise-grade APIs.",
-    items: ["probability intelligence", "market signals", "consensus scores", "intelligence APIs", "forecasting feeds"],
+    title: "Probability distribution feed",
+    metric: "24/7",
+    metricLabel: "API + webhook refresh",
+    items: ["live prediction markets", "cross-market correlations", "operator alerts", "forecasting feeds"],
     Icon: RadioTower,
   },
 ];
 
-const enterpriseTargets = ["Prediction Markets", "Market Makers", "Quant Funds", "AI Trading Systems", "Sportsbooks"];
+const pipelineMetrics = [
+  ["1,284", "Markets monitored"],
+  ["12,400+", "Smart money wallets"],
+  ["2.1M", "Signals processed daily"],
+  ["418", "Narrative clusters"],
+  ["8.4s", "Average latency"],
+  ["24/7", "AI consensus refresh"],
+];
+
+const outputAlerts = [
+  ["14:03:42", "webhook.probability_shift", "SOL ETF YES +12.0%", "87.4 conf"],
+  ["14:03:47", "alert.smart_money_flow", "$1.8M net YES flow", "HIGH"],
+  ["14:03:51", "api.consensus.update", "Truth 81 | Narrative 94", "LIVE"],
+];
+
+const probabilityDistribution = [
+  ["YES", "64.8%", 65],
+  ["NO", "31.6%", 32],
+  ["TAIL", "3.6%", 4],
+];
 
 const standardPlans = [
   {
@@ -284,62 +302,105 @@ function IntelligencePipeline() {
           <Label>Intelligence Pipeline</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Fragmented signals become prediction intelligence.</h2>
         </div>
-        <p className="max-w-sm border-l border-blue-300/20 pl-4 font-mono text-[11px] uppercase leading-6 tracking-[0.16em] text-blue-100/75">Real-time intelligence infrastructure for future markets.</p>
-      </motion.div>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-5">
-        {pipelineSteps.map(({ label, eyebrow, groupLabel, title, description, items, Icon }, index) => (
-          <Fragment key={title}>
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: index * 0.09 }} className="group relative overflow-hidden rounded-2xl border border-white/[0.085] bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.2))] p-7 ring-1 ring-blue-300/[0.03] transition duration-500 hover:-translate-y-1 hover:border-blue-300/22 hover:bg-blue-300/[0.025] sm:p-8">
-              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-200/35 to-transparent opacity-70" />
-              <div className="mb-9 flex items-center justify-between">
-                <div>
-                  <span className="font-mono text-[11px] text-blue-200/90">{label}</span>
-                  <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">{eyebrow}</div>
-                </div>
-                <span className="relative z-10 grid size-14 place-items-center rounded-2xl border border-blue-300/22 bg-blue-300/[0.07] text-blue-200 shadow-[0_0_34px_rgba(31,111,255,0.12)]">
-                  <Icon className="size-5" />
-                </span>
-              </div>
-              <h3 className="max-w-[17rem] text-2xl font-medium leading-tight tracking-[-0.025em] text-white">{title}</h3>
-              <p className="mt-4 text-sm leading-6 text-slate-400/95">{description}</p>
-              <div className="mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100/60">{groupLabel}</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {items.map((item) => (
-                  <span key={item} className="rounded-xl border border-white/[0.08] bg-black/28 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400 transition duration-300 group-hover:border-blue-300/18 group-hover:text-slate-300">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-            {index < pipelineSteps.length - 1 ? (
-              <div className="pointer-events-none hidden items-start justify-center pt-[4.65rem] lg:flex">
-                <span className="grid size-7 place-items-center rounded-full border border-blue-200/20 bg-[#061226]/95 text-blue-200/70 shadow-[0_0_28px_rgba(31,111,255,0.12)] ring-1 ring-white/[0.04]">
-                  <ArrowRight className="size-3.5" />
-                </span>
-              </div>
-            ) : null}
-          </Fragment>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function EnterpriseStrip() {
-  return (
-    <section className="border-y border-white/[0.075] bg-blue-300/[0.022] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-2xl">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100/70">B2B infrastructure for future markets.</p>
-          <p className="mt-2 text-sm leading-6 text-slate-300/85">Built for prediction markets, quant firms, market makers, and AI trading systems.</p>
-        </div>
-        <div className="flex flex-wrap gap-2.5 lg:justify-end">
-          {enterpriseTargets.map((target) => (
-            <span key={target} className="rounded-xl border border-white/[0.07] bg-black/28 px-3.5 py-2 text-xs font-medium text-slate-300">
-              {target}
-            </span>
+        <div className="grid w-full max-w-xl grid-cols-2 gap-3 sm:grid-cols-3">
+          {pipelineMetrics.slice(0, 3).map(([value, label]) => (
+            <div key={label} className="rounded-2xl border border-blue-300/14 bg-blue-300/[0.045] p-4">
+              <div className="font-mono text-2xl tracking-[-0.05em] text-white">{value}</div>
+              <div className="mt-2 font-mono text-[9px] uppercase leading-4 tracking-[0.14em] text-slate-500">{label}</div>
+            </div>
           ))}
         </div>
+      </motion.div>
+      <div className="grid gap-5 lg:grid-cols-[0.94fr_1.06fr]">
+        <motion.div {...fadeUp} className="relative overflow-hidden rounded-2xl border border-white/[0.085] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.24))] p-5 ring-1 ring-blue-300/[0.03] sm:p-6">
+          <div className="data-streams absolute inset-0 opacity-[0.045]" />
+          <div className="relative grid gap-4">
+            {pipelineSteps.map(({ label, eyebrow, title, metric, metricLabel, items, Icon }, index) => (
+              <motion.div key={title} className="group relative overflow-hidden rounded-2xl border border-white/[0.075] bg-black/38 p-5 transition duration-500 hover:border-blue-300/22 hover:bg-blue-300/[0.035]" animate={{ opacity: [0.78, 1, 0.86] }} transition={{ duration: 5.4, repeat: Infinity, delay: index * 0.5, ease: "easeInOut" }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-11 place-items-center rounded-2xl border border-blue-300/20 bg-blue-300/[0.07] text-blue-200 shadow-[0_0_34px_rgba(31,111,255,0.1)]">
+                      <Icon className="size-5" />
+                    </span>
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                        {label} / {eyebrow}
+                      </div>
+                      <h3 className="mt-2 text-xl font-medium tracking-[-0.02em] text-white">{title}</h3>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-3xl tracking-[-0.06em] text-white">{metric}</div>
+                    <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100/65">{metricLabel}</div>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {items.map((item) => (
+                    <div key={item} className="rounded-xl border border-white/[0.075] bg-white/[0.025] px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.08em] text-slate-400">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
+          <TerminalChrome title="oraclex/output-layer">
+            <div className="space-y-4 p-4 sm:p-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {pipelineMetrics.slice(3).map(([value, label]) => (
+                  <div key={label} className="rounded-xl border border-white/[0.075] bg-white/[0.028] p-4">
+                    <div className="font-mono text-2xl tracking-[-0.05em] text-white">{value}</div>
+                    <div className="mt-2 font-mono text-[9px] uppercase leading-4 tracking-[0.14em] text-slate-500">{label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-blue-300/[0.12] bg-black/72 p-4">
+                <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                  <span>Probability distribution</span>
+                  <span className="text-blue-200">SOL ETF</span>
+                </div>
+                <div className="space-y-3">
+                  {probabilityDistribution.map(([label, value, width]) => (
+                    <div key={label}>
+                      <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-slate-300">
+                        <span>{label}</span>
+                        <span className="text-blue-200">{value}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <motion.div className="h-full bg-blue-300" animate={{ width: [`${Number(width) - 8}%`, `${width}%`, `${Number(width) - 3}%`] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/[0.075] bg-white/[0.026] p-4">
+                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">API response</div>
+                <pre className="overflow-hidden rounded-xl border border-white/[0.07] bg-black/58 p-4 font-mono text-[10px] leading-5 text-slate-300">
+{`{
+  "market": "sol_etf_approval",
+  "probability": 0.648,
+  "consensus": 87.4,
+  "latency_ms": 8400
+}`}
+                </pre>
+              </div>
+              <div className="space-y-2.5">
+                {outputAlerts.map(([time, event, payload, status], index) => (
+                  <motion.div key={event} className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.075] bg-black/46 px-3.5 py-3 text-xs" animate={{ opacity: [0.68, 1, 0.82] }} transition={{ duration: 4.8, repeat: Infinity, delay: index * 0.42, ease: "easeInOut" }}>
+                    <div className="min-w-0">
+                      <div className="font-mono text-[10px] text-slate-500">{time} / {event}</div>
+                      <div className="mt-1 truncate text-slate-200">{payload}</div>
+                    </div>
+                    <span className="shrink-0 font-mono text-[11px] text-blue-200">{status}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </TerminalChrome>
+        </motion.div>
       </div>
     </section>
   );
@@ -451,26 +512,6 @@ function IntelligenceTerminal() {
             </div>
           </TerminalChrome>
         </motion.div>
-      </div>
-    </section>
-  );
-}
-
-function WhyOracleX() {
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
-      <motion.div {...fadeUp} className="mb-12 max-w-3xl">
-        <Label>Why OracleX</Label>
-        <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Prediction markets solved liquidity. OracleX solves intelligence.</h2>
-      </motion.div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {proofCards.map(([title, copy, Icon], index) => (
-          <motion.div key={title as string} {...fadeUp} transition={{ ...fadeUp.transition, delay: index * 0.08 }} className="rounded-2xl border border-white/[0.075] bg-white/[0.026] p-7 transition duration-500 hover:-translate-y-1 hover:border-blue-300/20 hover:bg-blue-300/[0.035]">
-            <Icon className="mb-10 size-6 text-blue-200" />
-            <h3 className="text-xl font-medium tracking-[-0.02em] text-white">{title as string}</h3>
-            <p className="mt-4 text-sm leading-6 text-slate-400/95">{copy as string}</p>
-          </motion.div>
-        ))}
       </div>
     </section>
   );
@@ -893,11 +934,17 @@ export default function Home() {
             OracleX
           </Link>
           <div className="hidden items-center gap-8 text-xs font-medium text-slate-400 md:flex">
-            {navLinks.map((link) => (
-              <a key={link} href={link === "Docs" ? DOCS_URL : `#${link.toLowerCase()}`} target={link === "Docs" ? "_blank" : undefined} rel={link === "Docs" ? "noreferrer" : undefined} className="cursor-pointer transition duration-300 hover:text-blue-100">
-                {link}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.external ? (
+                <a key={link.label} href={link.href} target="_blank" rel="noreferrer" className="cursor-pointer transition duration-300 hover:text-blue-100">
+                  {link.label}
+                </a>
+              ) : (
+                <Link key={link.label} href={link.href} className="cursor-pointer transition duration-300 hover:text-blue-100">
+                  {link.label}
+                </Link>
+              ),
+            )}
           </div>
           <button type="button" onClick={openTerminalLogin} className="premium-interactive hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 sm:inline-flex">
             Enter Terminal
@@ -910,7 +957,7 @@ export default function Home() {
           <Label>Chainlink for prediction intelligence</Label>
           <h1 className="max-w-4xl text-6xl font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:text-8xl lg:text-[6.5rem]">Prediction markets need intelligence.</h1>
           <p className="mt-8 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX is the intelligence infrastructure layer powering next-generation prediction markets on Solana.</p>
-          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Prediction markets solved liquidity. OracleX solves intelligence.</p>
+          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Live signals, consensus scoring, wallet intelligence, and enterprise APIs for operational market teams.</p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <PrimaryButton onClick={openTerminalLogin}>Enter Terminal</PrimaryButton>
             <SecondaryButton>Read Docs</SecondaryButton>
@@ -928,14 +975,12 @@ export default function Home() {
       </section>
 
       <div className="relative z-10">
-        <LiveFeed />
-        <EnterpriseStrip />
-        <IntelligencePipeline />
-        <ConsensusEngine />
         <IntelligenceTerminal />
-        <WhyOracleX />
-        <Infrastructure />
+        <ConsensusEngine />
+        <IntelligencePipeline />
         <PricingSection onEnterAccessLevel={openPricingLogin} />
+        <LiveFeed />
+        <Infrastructure />
 
         <section className="px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
           <motion.div {...fadeUp} className="mx-auto max-w-5xl rounded-2xl border border-blue-300/20 bg-blue-300/[0.045] p-8 text-center shadow-[0_34px_90px_rgba(0,0,0,0.26)] sm:p-16">
