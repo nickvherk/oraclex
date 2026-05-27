@@ -51,11 +51,11 @@ const navSections = [
   {
     label: "MARKETS",
     items: [
-      { label: "Crypto", href: "/terminal", icon: BarChart3, feature: "liveFeed" },
-      { label: "Politics", href: "/terminal", icon: ShieldCheck, feature: "liveFeed" },
-      { label: "Macro", href: "/terminal", icon: Gauge, feature: "liveFeed" },
-      { label: "AI", href: "/terminal", icon: Cpu, feature: "liveFeed" },
-      { label: "Sports", href: "/terminal", icon: Zap, feature: "liveFeed" },
+      { label: "Crypto", href: "/terminal/markets/crypto", icon: BarChart3, feature: "liveFeed" },
+      { label: "Politics", href: "/terminal/markets/politics", icon: ShieldCheck, feature: "liveFeed" },
+      { label: "Macro", href: "/terminal/markets/macro", icon: Gauge, feature: "liveFeed" },
+      { label: "AI", href: "/terminal/markets/ai", icon: Cpu, feature: "liveFeed" },
+      { label: "Sports", href: "/terminal/markets/sports", icon: Zap, feature: "liveFeed" },
     ],
   },
   {
@@ -104,6 +104,20 @@ const routeTitles: Record<string, string> = {
   "/terminal/data-streams": "Data Streams",
   "/terminal/settings": "Account Settings",
 };
+
+const marketRouteTitles: Record<string, string> = {
+  crypto: "Crypto Market Workspace",
+  politics: "Politics Market Workspace",
+  macro: "Macro Market Workspace",
+  ai: "AI Market Workspace",
+  sports: "Sports Market Workspace",
+};
+
+function getRouteTitle(pathname: string) {
+  const marketMatch = pathname.match(/^\/terminal\/markets\/([^/]+)$/);
+  if (marketMatch) return marketRouteTitles[marketMatch[1]] ?? "Market Workspace";
+  return routeTitles[pathname] ?? "OracleX Intelligence Workspace";
+}
 
 export function Panel({ className = "", children }: { className?: string; children: React.ReactNode }) {
   return (
@@ -231,7 +245,7 @@ function Sidebar() {
 
 export function TerminalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const title = routeTitles[pathname] ?? "OracleX Intelligence Workspace";
+  const title = getRouteTitle(pathname);
   const { session } = useCurrentSession();
   const isPendingSupabaseUser = session?.source === "supabase" && session.subscriptionStatus !== "active";
   const content =
