@@ -132,7 +132,7 @@ export function BiasBadge({ bias }: { bias: string }) {
         ? "border-red-300/20 bg-red-300/[0.08] text-red-200"
         : "border-slate-300/15 bg-slate-300/[0.06] text-slate-300";
 
-  return <Badge className={`h-6 rounded-lg border px-2 font-mono text-[10px] ${tone}`}>{bias}</Badge>;
+  return <Badge className={`h-6 shrink-0 whitespace-nowrap rounded-lg border px-2 font-mono text-[10px] ${tone}`}>{bias}</Badge>;
 }
 
 export function SeverityBadge({ severity }: { severity: string }) {

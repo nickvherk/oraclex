@@ -198,3 +198,34 @@
   background-size: 64px 64px;
   animation: stream 18s linear infinite;
 }
+
+.premium-interactive {
+  cursor: pointer;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    color 200ms ease;
+}
+
+.premium-interactive:hover {
+  transform: scale(1.02);
+  border-color: rgba(147, 197, 253, 0.62);
+  background-color: rgba(59, 130, 246, 0.13);
+  box-shadow: 0 0 28px rgba(59, 130, 246, 0.22);
+}
+
+.premium-interactive:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.premium-arrow {
+  transition: transform 200ms ease;
+}
+
+.premium-interactive:hover .premium-arrow {
+  transform: translateX(3px);
+}

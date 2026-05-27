@@ -30,6 +30,9 @@ import { Fragment, useState } from "react";
 
 import { getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
+const DOCS_URL = "https://oracle-x-2.gitbook.io/oraclex-documentation/";
+const X_URL = "https://x.com/oraclexterminal";
+
 const navLinks = ["Consensus", "Terminal", "Infrastructure", "Docs"];
 
 const heroMetrics = [
@@ -175,16 +178,16 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function PrimaryButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold tracking-[0.01em] text-white shadow-[0_16px_42px_rgba(31,111,255,0.18)] transition duration-500 hover:-translate-y-0.5 hover:bg-[#3b82f6] hover:shadow-[0_18px_48px_rgba(31,111,255,0.24)]">
+    <button type="button" onClick={onClick} className="premium-interactive group inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold tracking-[0.01em] text-white shadow-[0_16px_42px_rgba(31,111,255,0.18)]">
       {children}
-      <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+      <ArrowRight className="premium-arrow size-4" />
     </button>
   );
 }
 
 function SecondaryButton({ children }: { children: React.ReactNode }) {
   return (
-    <a href="#" className="inline-flex h-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] px-5 text-[13px] font-semibold tracking-[0.01em] text-slate-100 transition duration-500 hover:-translate-y-0.5 hover:border-blue-200/30 hover:bg-blue-300/[0.07]">
+    <a href={DOCS_URL} target="_blank" rel="noreferrer" className="premium-interactive inline-flex h-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] px-5 text-[13px] font-semibold tracking-[0.01em] text-slate-100">
       {children}
     </a>
   );
@@ -525,7 +528,7 @@ function EnterpriseAccessModal({ open, onClose }: { open: boolean; onClose: () =
               </span>
               <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">ENTERPRISE ACCESS</span>
             </div>
-            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
+            <button type="button" onClick={onClose} className="premium-interactive grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 hover:text-white" aria-label="Close modal">
               <X className="size-4" />
             </button>
           </div>
@@ -554,9 +557,9 @@ function EnterpriseAccessModal({ open, onClose }: { open: boolean; onClose: () =
               <span className="mb-2 block text-xs font-medium text-slate-300">Message</span>
               <textarea name="message" required rows={4} className="w-full resize-none rounded-xl border border-white/[0.08] bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-300/40 focus:bg-blue-300/[0.045] focus:ring-4 focus:ring-blue-300/[0.06]" placeholder="Markets, feeds, latency needs, integrations, or deployment context" />
             </label>
-            <button type="submit" className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6]">
+            <button type="submit" className="premium-interactive mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)]">
               Request Access
-              <ArrowRight className="size-4" />
+              <ArrowRight className="premium-arrow size-4" />
             </button>
           </form>
         </div>
@@ -582,7 +585,7 @@ function PricingSection({ onEnterAccessLevel }: { onEnterAccessLevel: (plan: Hom
           <div className="relative grid w-full max-w-sm grid-cols-2 rounded-2xl border border-white/[0.08] bg-black/42 p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.28)] ring-1 ring-blue-300/[0.04]">
             <motion.span className="absolute bottom-1.5 left-1.5 top-1.5 w-[calc(50%-0.375rem)] rounded-xl border border-blue-300/24 bg-blue-300/[0.12] shadow-[0_12px_38px_rgba(31,111,255,0.16)]" animate={{ x: accessMode === "standard" ? 0 : "100%" }} transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }} />
             {(["standard", "enterprise"] as const).map((mode) => (
-              <button key={mode} type="button" onClick={() => setAccessMode(mode)} className={`relative z-10 h-11 rounded-xl text-sm font-semibold transition duration-300 ${accessMode === mode ? "text-white" : "text-slate-500 hover:text-slate-300"}`}>
+              <button key={mode} type="button" onClick={() => setAccessMode(mode)} className={`premium-interactive relative z-10 h-11 rounded-xl border border-transparent text-sm font-semibold ${accessMode === mode ? "text-white" : "text-slate-500 hover:text-slate-300"}`}>
                 {mode === "standard" ? "Standard" : "Enterprise"}
               </button>
             ))}
@@ -628,7 +631,7 @@ function PricingSection({ onEnterAccessLevel }: { onEnterAccessLevel: (plan: Hom
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={() => (plan.enterprise ? setIsEnterpriseAccessOpen(true) : onEnterAccessLevel(plan.plan as HomepagePricingPlan))} className={`mt-8 inline-flex h-12 items-center justify-center rounded-xl border px-5 text-[13px] font-semibold transition duration-500 ${plan.popular ? "border-blue-300/45 bg-[#1f6fff] text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] hover:bg-[#3b82f6]" : "border-white/[0.09] bg-white/[0.04] text-slate-100 hover:border-blue-300/26 hover:bg-blue-300/[0.08]"}`}>
+                  <button type="button" onClick={() => (plan.enterprise ? setIsEnterpriseAccessOpen(true) : onEnterAccessLevel(plan.plan as HomepagePricingPlan))} className={`premium-interactive mt-8 inline-flex h-12 items-center justify-center rounded-xl border px-5 text-[13px] font-semibold ${plan.popular ? "border-blue-300/45 bg-[#1f6fff] text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)]" : "border-white/[0.09] bg-white/[0.04] text-slate-100"}`}>
                     {plan.enterprise ? "Request Access" : "Enter Access Level"}
                   </button>
                 </motion.div>
@@ -641,9 +644,9 @@ function PricingSection({ onEnterAccessLevel }: { onEnterAccessLevel: (plan: Hom
                 <Label>B2B Infrastructure</Label>
                 <h3 className="max-w-2xl text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Enterprise Intelligence Infrastructure</h3>
                 <p className="mt-7 max-w-2xl text-[17px] leading-8 text-slate-300/90">OracleX provides institutional-grade prediction intelligence infrastructure for market platforms, quant firms, sportsbooks, and AI trading systems.</p>
-                <button type="button" onClick={() => setIsEnterpriseAccessOpen(true)} className="mt-10 inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:-translate-y-0.5 hover:bg-[#3b82f6]">
+                <button type="button" onClick={() => setIsEnterpriseAccessOpen(true)} className="premium-interactive mt-10 inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)]">
                   Request Enterprise Access
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="premium-arrow size-4" />
                 </button>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -736,7 +739,7 @@ function EnterTerminalModal({ open, onClose, openedFromPricing }: { open: boolea
               </span>
               <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-100/80">PRIVATE TERMINAL</span>
             </div>
-            <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 transition hover:border-blue-300/20 hover:text-white" aria-label="Close modal">
+            <button type="button" onClick={onClose} className="premium-interactive grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-400 hover:text-white" aria-label="Close modal">
               <X className="size-4" />
             </button>
           </div>
@@ -773,7 +776,7 @@ function EnterTerminalModal({ open, onClose, openedFromPricing }: { open: boolea
                   setConfirmPassword("");
                   setError("");
                 }}
-                className={`h-11 rounded-xl text-sm font-semibold transition duration-300 ${authMode === mode ? "border border-blue-300/24 bg-blue-300/[0.12] text-white shadow-[0_12px_38px_rgba(31,111,255,0.14)]" : "text-slate-500 hover:text-slate-300"}`}
+                className={`premium-interactive h-11 rounded-xl border text-sm font-semibold ${authMode === mode ? "border-blue-300/24 bg-blue-300/[0.12] text-white shadow-[0_12px_38px_rgba(31,111,255,0.14)]" : "border-transparent text-slate-500 hover:text-slate-300"}`}
                 aria-pressed={authMode === mode}
               >
                 {label}
@@ -846,9 +849,9 @@ function EnterTerminalModal({ open, onClose, openedFromPricing }: { open: boolea
                 {error}
               </div>
             ) : null}
-            <button type="submit" disabled={isSubmitting} className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition duration-500 hover:bg-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-70">
+            <button type="submit" disabled={isSubmitting} className="premium-interactive mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] disabled:cursor-not-allowed disabled:opacity-70">
               {isSubmitting ? "Authenticating..." : isSignup ? "Create Account" : "Login"}
-              <ArrowRight className="size-4" />
+              <ArrowRight className="premium-arrow size-4" />
             </button>
           </form>
           <div className="mt-5 rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 font-mono text-[10px] leading-5 text-slate-400">
@@ -883,7 +886,7 @@ export default function Home() {
 
       <nav className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.075] bg-black/62 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[-0.01em] text-white">
+          <Link href="/" className="cursor-pointer flex items-center gap-2.5 text-sm font-semibold tracking-[-0.01em] text-white">
             <span className="grid size-8 place-items-center rounded-xl border border-blue-300/25 bg-blue-300/[0.055] text-blue-200">
               <Network className="size-4" />
             </span>
@@ -891,12 +894,12 @@ export default function Home() {
           </Link>
           <div className="hidden items-center gap-8 text-xs font-medium text-slate-400 md:flex">
             {navLinks.map((link) => (
-              <a key={link} href={link === "Docs" ? "#" : `#${link.toLowerCase()}`} className="transition duration-300 hover:text-blue-100">
+              <a key={link} href={link === "Docs" ? DOCS_URL : `#${link.toLowerCase()}`} target={link === "Docs" ? "_blank" : undefined} rel={link === "Docs" ? "noreferrer" : undefined} className="cursor-pointer transition duration-300 hover:text-blue-100">
                 {link}
               </a>
             ))}
           </div>
-          <button type="button" onClick={openTerminalLogin} className="hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 transition duration-300 hover:bg-blue-300/[0.1] sm:inline-flex">
+          <button type="button" onClick={openTerminalLogin} className="premium-interactive hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 sm:inline-flex">
             Enter Terminal
           </button>
         </div>
@@ -952,8 +955,15 @@ export default function Home() {
               OracleX
             </div>
             <div className="flex flex-wrap gap-5 text-xs font-medium text-slate-500">
-              {["X/Twitter", "GitHub", "Docs", "Telegram", "Privacy", "Terms"].map((item) => (
-                <a key={item} href="#" className="transition duration-300 hover:text-blue-100">
+              {[
+                ["X", X_URL],
+                ["GitHub", "#"],
+                ["Docs", DOCS_URL],
+                ["Telegram", "#"],
+                ["Privacy", "#"],
+                ["Terms", "#"],
+              ].map(([item, href]) => (
+                <a key={item} href={href} target={item === "X" || item === "Docs" ? "_blank" : undefined} rel={item === "X" || item === "Docs" ? "noreferrer" : undefined} className="premium-interactive rounded-lg border border-transparent px-2 py-1 transition duration-300 hover:text-blue-100">
                   {item}
                 </a>
               ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, AlertTriangle, BrainCircuit, CircleDot, Database, Lock, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
+import { Activity, AlertTriangle, BrainCircuit, CircleDot, Database, Info, Lock, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 
 import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
 import { BiasBadge, Panel, PanelHeader } from "@/components/terminal/terminal-shell";
@@ -17,11 +17,41 @@ const markets = [
 ];
 
 const agents = [
-  ["Narrative Agent", "94", "Narrative velocity expanding across crypto media", "Bullish"],
-  ["Whale Agent", "88", "$3.8M directional YES accumulation detected", "Bullish"],
-  ["Truth Agent", "81", "Source quality stable with two conflicting filings", "Neutral"],
-  ["Liquidity Agent", "86", "Order book imbalance favors higher probability", "Bullish"],
+  ["Smart Money Flow", "88", "$3.8M directional YES accumulation detected across linked wallets", "Bullish"],
+  ["Narrative Momentum", "84", "Institutional ETF discussion accelerated after filing-window analysis", "Bullish"],
+  ["Resolution Clarity", "81", "Source quality stable with two conflicting issuer statements", "Neutral"],
+  ["Liquidity Conditions", "86", "Order book imbalance favors higher probability but depth remains thin", "Bullish"],
 ];
+
+const probabilityDrivers = [
+  "smart money positioning",
+  "leverage pressure",
+  "narrative acceleration",
+  "wallet clustering",
+  "liquidity conditions",
+  "consensus divergence",
+];
+
+function ProbabilityInfo() {
+  return (
+    <span className="group/probability relative inline-flex">
+      <button type="button" aria-label="Explain OracleX probability" className="grid size-5 cursor-help place-items-center rounded-full border border-blue-300/20 bg-blue-300/[0.07] text-blue-100 transition hover:border-blue-300/45 hover:bg-blue-300/[0.13]">
+        <Info className="size-3" />
+      </button>
+      <span className="pointer-events-none absolute right-0 top-7 z-20 w-72 rounded-xl border border-blue-300/20 bg-[#050914]/98 p-3 text-left shadow-[0_18px_60px_rgba(0,0,0,0.45)] opacity-0 ring-1 ring-blue-300/[0.06] transition duration-200 group-hover/probability:opacity-100">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-blue-100">OracleX probability reflects:</span>
+        <span className="mt-2 grid gap-1.5">
+          {probabilityDrivers.map((driver) => (
+            <span key={driver} className="flex items-center gap-2 text-[11px] leading-4 text-slate-300">
+              <CircleDot className="size-2.5 shrink-0 text-blue-200" />
+              {driver}
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
+}
 
 const feed = [
   ["14:03:28", "Whale entered YES on SOL ETF", "+$1.8M"],
@@ -106,7 +136,10 @@ function TerminalDashboard() {
                           <h2 className="text-sm font-semibold tracking-[-0.01em] text-white">{market.title}</h2>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono text-2xl tracking-[-0.05em] text-white">{market.oracle}</div>
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="font-mono text-2xl tracking-[-0.05em] text-white">{market.oracle}</div>
+                            <ProbabilityInfo />
+                          </div>
                           <div className={`mt-1 flex items-center justify-end gap-1 font-mono text-[11px] ${market.change.startsWith("+") ? "text-emerald-200" : "text-red-200"}`}>
                             {market.change.startsWith("+") ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
                             {market.change}
@@ -159,8 +192,8 @@ function TerminalDashboard() {
             <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
               {visibleAgents.map(([name, confidence, signal, bias]) => (
                 <div key={name} className="rounded-xl border border-white/[0.075] bg-white/[0.025] p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="text-sm font-semibold text-white">{name}</div>
+                  <div className="mb-4 flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0 text-sm font-semibold leading-5 text-white">{name}</div>
                     <BiasBadge bias={bias} />
                   </div>
                   <div className="mb-3 flex items-end justify-between">
@@ -221,7 +254,10 @@ function TerminalDashboard() {
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
                   <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
-                  <div className="mt-2 font-mono text-lg tracking-[-0.04em] text-white">{value}</div>
+                  <div className="mt-2 flex items-center gap-2 font-mono text-lg tracking-[-0.04em] text-white">
+                    {value}
+                    {label === "OracleX probability" ? <ProbabilityInfo /> : null}
+                  </div>
                 </div>
               ))}
             </div>
