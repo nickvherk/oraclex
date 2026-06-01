@@ -191,10 +191,12 @@ function TerminalDashboard() {
             <PanelHeader title="Consensus Summary" action={isObserver ? "Basic signals" : "4 live agents"} />
             <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
               {visibleAgents.map(([name, confidence, signal, bias]) => (
-                <div key={name} className="rounded-xl border border-white/[0.075] bg-white/[0.025] p-4">
-                  <div className="mb-4 flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0 text-sm font-semibold leading-5 text-white">{name}</div>
-                    <BiasBadge bias={bias} />
+                <div key={name} className="relative rounded-xl border border-white/[0.075] bg-white/[0.025] p-4">
+                  <div className="mb-4 min-h-10 pr-20">
+                    <div className="text-sm font-semibold leading-5 text-white">{name}</div>
+                    <div className="absolute right-4 top-4">
+                      <BiasBadge bias={bias} />
+                    </div>
                   </div>
                   <div className="mb-3 flex items-end justify-between">
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">Confidence</span>

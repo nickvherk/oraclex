@@ -4,9 +4,8 @@ import {
   Activity,
   BarChart3,
   Bell,
-  Bot,
   BrainCircuit,
-  CheckCircle2,
+  CalendarDays,
   Cpu,
   Database,
   Gauge,
@@ -46,6 +45,7 @@ const navSections = [
       { label: "Narrative Watch", href: "/terminal/narratives", icon: Globe2, feature: "narrativeWatch" },
       { label: "Wallet Intelligence", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
       { label: "Cross-Market Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
+      { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "liveFeed" },
     ],
   },
   {
@@ -61,19 +61,10 @@ const navSections = [
   {
     label: "INFRASTRUCTURE",
     items: [
-      { label: "APIs", href: "/terminal/apis", icon: Plug, feature: "apis" },
-      { label: "Enterprise Feeds", href: "/terminal/enterprise-feeds", icon: Server, feature: "enterpriseFeeds" },
-      { label: "Webhooks", href: "/terminal/webhooks", icon: Webhook, feature: "webhooks" },
-      { label: "Data Streams", href: "/terminal/data-streams", icon: Database, feature: "dataStreams" },
-    ],
-  },
-  {
-    label: "AGENTS",
-    items: [
-      { label: "Narrative Agent", href: "/terminal/narratives", icon: Bot, feature: "narrativeWatch" },
-      { label: "Whale Agent", href: "/terminal/signals", icon: Wallet, feature: "signalMonitor" },
-      { label: "Truth Agent", href: "/terminal/consensus", icon: CheckCircle2, feature: "consensusEngine" },
-      { label: "Liquidity Agent", href: "/terminal/signals", icon: Layers, feature: "signalMonitor" },
+      { label: "APIs", href: "/terminal/apis", icon: Plug, feature: "apis", comingSoon: true },
+      { label: "Enterprise Feeds", href: "/terminal/enterprise-feeds", icon: Server, feature: "enterpriseFeeds", comingSoon: true },
+      { label: "Webhooks", href: "/terminal/webhooks", icon: Webhook, feature: "webhooks", comingSoon: true },
+      { label: "Data Streams", href: "/terminal/data-streams", icon: Database, feature: "dataStreams", comingSoon: true },
     ],
   },
   {
@@ -98,6 +89,7 @@ const routeTitles: Record<string, string> = {
   "/terminal/signals": "Signal Monitor",
   "/terminal/wallets": "Wallet Intelligence",
   "/terminal/flows": "Cross-Market Flows",
+  "/terminal/events": "Market Events",
   "/terminal/apis": "OracleX APIs",
   "/terminal/webhooks": "Webhooks",
   "/terminal/enterprise-feeds": "Enterprise Feeds",
@@ -193,17 +185,33 @@ function Sidebar() {
               {section.items.map((item) => {
                 const active = pathname === item.href;
                 const Icon = item.icon;
+                const comingSoon = "comingSoon" in item && item.comingSoon;
                 const locked = item.href !== "/terminal/settings" && !canAccess(activePlan, item.feature as Feature);
 
-                return (
-                  <Link
-                    key={`${section.label}-${item.label}`}
-                    href={item.href}
-                    className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-xs font-medium transition ${active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : locked ? "text-slate-600 hover:bg-white/[0.02] hover:text-slate-400" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`}
-                  >
-                    <Icon className="size-4" />
+                const navClass = `flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${comingSoon ? "cursor-not-allowed border border-white/[0.045] bg-white/[0.018] text-slate-600 opacity-70" : active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : locked ? "text-slate-600 hover:bg-white/[0.02] hover:text-slate-400" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`;
+
+                const navContent = (
+                  <>
+                    <Icon className="size-4 shrink-0" />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {locked ? <Lock className="size-3.5" /> : null}
+                    {comingSoon ? (
+                      <span className="flex shrink-0 items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.035] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.08em] text-slate-500">
+                        <Lock className="size-2.5" />
+                        Coming Soon
+                      </span>
+                    ) : locked ? (
+                      <Lock className="size-3.5" />
+                    ) : null}
+                  </>
+                );
+
+                return comingSoon ? (
+                  <div key={`${section.label}-${item.label}`} aria-disabled="true" className={navClass}>
+                    {navContent}
+                  </div>
+                ) : (
+                  <Link key={`${section.label}-${item.label}`} href={item.href} className={navClass}>
+                    {navContent}
                   </Link>
                 );
               })}
