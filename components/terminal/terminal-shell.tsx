@@ -9,7 +9,6 @@ import {
   Cpu,
   Database,
   Gauge,
-  Globe2,
   Layers,
   LogOut,
   Lock,
@@ -40,12 +39,11 @@ const navSections = [
     label: "INTELLIGENCE",
     items: [
       { label: "Live Feed", href: "/terminal", icon: Radio, feature: "liveFeed" },
-      { label: "Consensus Engine", href: "/terminal/consensus", icon: BrainCircuit, feature: "consensusEngine" },
       { label: "Signal Monitor", href: "/terminal/signals", icon: Activity, feature: "signalMonitor" },
-      { label: "Narrative Watch", href: "/terminal/narratives", icon: Globe2, feature: "narrativeWatch" },
-      { label: "Wallet Intelligence", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
-      { label: "Cross-Market Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
-      { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "liveFeed" },
+      { label: "Narrative Intelligence", href: "/terminal/narratives", icon: BrainCircuit, feature: "narrativeIntelligence" },
+      { label: "Prediction Market Analytics", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
+      { label: "Hyperliquid Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
+      { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "marketEvents" },
     ],
   },
   {
@@ -84,11 +82,11 @@ const sidebarStats = [
 
 const routeTitles: Record<string, string> = {
   "/terminal": "Live Intelligence Workspace",
-  "/terminal/narratives": "Narrative Watch",
-  "/terminal/consensus": "Consensus Engine",
+  "/terminal/narratives": "Narrative Intelligence",
+  "/terminal/consensus": "Narrative Intelligence",
   "/terminal/signals": "Signal Monitor",
-  "/terminal/wallets": "Wallet Intelligence",
-  "/terminal/flows": "Cross-Market Flows",
+  "/terminal/wallets": "Prediction Market Analytics",
+  "/terminal/flows": "Hyperliquid Flows",
   "/terminal/events": "Market Events",
   "/terminal/apis": "OracleX APIs",
   "/terminal/webhooks": "Webhooks",
@@ -119,11 +117,14 @@ export function Panel({ className = "", children }: { className?: string; childr
   );
 }
 
-export function PanelHeader({ title, action }: { title: string; action?: string }) {
+export function PanelHeader({ title, action, info }: { title: string; action?: string; info?: React.ReactNode }) {
   return (
     <CardHeader className="border-b border-white/[0.075] px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <CardTitle className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-300">{title}</CardTitle>
+        <div className="flex min-w-0 items-center gap-2">
+          <CardTitle className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-300">{title}</CardTitle>
+          {info}
+        </div>
         {action ? <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-blue-200">{action}</span> : null}
       </div>
     </CardHeader>

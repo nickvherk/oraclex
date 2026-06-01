@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Activity, AlertTriangle, BrainCircuit, CircleDot, Database, Info, Lock, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
 import { BiasBadge, Panel, PanelHeader } from "@/components/terminal/terminal-shell";
@@ -16,12 +17,48 @@ const markets = [
   { title: "BTC breaks new ATH this quarter", sector: "Crypto", poly: "58.6%", oracle: "52.4%", change: "-2.4%", bias: "Bearish", volume: "$24.1M" },
 ];
 
-const agents = [
-  ["Smart Money Flow", "88", "$3.8M directional YES accumulation detected across linked wallets", "Bullish"],
-  ["Narrative Momentum", "84", "Institutional ETF discussion accelerated after filing-window analysis", "Bullish"],
-  ["Resolution Clarity", "81", "Source quality stable with two conflicting issuer statements", "Neutral"],
-  ["Liquidity Conditions", "86", "Order book imbalance favors higher probability but depth remains thin", "Bullish"],
+const intelligenceDrivers = [
+  ["ETF Approval Narrative", "88", "Issuer filing activity and ETF-window discussion are pushing SOL approval markets above public pricing.", "Bullish"],
+  ["Institutional Crypto Access", "84", "Institutional access narratives are spreading through crypto policy and allocation accounts tied to SOL exposure.", "Bullish"],
+  ["Filing Resolution Clarity", "81", "The market rules map cleanly to observable approval outcomes, though issuer commentary is still mixed.", "Neutral"],
+  ["SOL Liquidity Support", "86", "YES-side demand and order-book imbalance support higher probability, but depth remains thin.", "Bullish"],
 ];
+
+const overviewMetrics: { label: string; value: string; detail: string; Icon: LucideIcon; info: string; align?: "left" | "right" }[] = [
+  {
+    label: "Oracle Consensus",
+    value: "87.4",
+    detail: "12-point intelligence premium",
+    Icon: TrendingUp,
+    info: "Oracle Consensus measures how strongly OracleX believes current market pricing is supported by smart money positioning, narrative strength, liquidity conditions, and resolution clarity. 50 = neutral, 70+ = strong conviction, 85+ = high-conviction intelligence alignment.",
+    align: "left",
+  },
+  {
+    label: "Markets Scanned",
+    value: "1,284",
+    detail: "42 sectors",
+    Icon: Database,
+    info: "Number of prediction markets and related market sectors currently monitored by OracleX for pricing divergence, narratives, liquidity conditions, and smart money activity.",
+    align: "left",
+  },
+  {
+    label: "Whale Flow",
+    value: "$3.8M",
+    detail: "YES bias",
+    Icon: Wallet,
+    info: "Directional capital movement from linked high-value wallets and smart money clusters. Positive YES bias indicates whale activity is supporting higher probability pricing.",
+    align: "right",
+  },
+  {
+    label: "Signal Latency",
+    value: "8.4s",
+    detail: "p95 stable",
+    Icon: Activity,
+    info: "Estimated delay between detected market activity and OracleX signal generation. Lower latency means faster intelligence updates.",
+    align: "right",
+  },
+];
+
 
 const probabilityDrivers = [
   "smart money positioning",
@@ -53,6 +90,19 @@ function ProbabilityInfo() {
   );
 }
 
+function InfoTooltip({ label, children, align = "right", width = "w-80" }: { label: string; children: React.ReactNode; align?: "left" | "right"; width?: string }) {
+  return (
+    <span className="group/tooltip relative z-30 inline-flex">
+      <button type="button" aria-label={label} className="grid size-5 cursor-help place-items-center rounded-full border border-blue-300/20 bg-blue-300/[0.07] text-blue-100 transition hover:border-blue-300/45 hover:bg-blue-300/[0.13]">
+        <Info className="size-3" />
+      </button>
+      <span className={`pointer-events-none absolute top-7 z-[100] ${align === "left" ? "left-0" : "right-0"} ${width} max-w-[calc(100vw-2rem)] rounded-xl border border-blue-300/20 bg-[#050914]/98 p-3 text-left text-[11px] leading-5 text-slate-300 opacity-0 shadow-[0_18px_60px_rgba(0,0,0,0.6)] ring-1 ring-blue-300/[0.06] transition duration-200 group-hover/tooltip:opacity-100`}>
+        {children}
+      </span>
+    </span>
+  );
+}
+
 const feed = [
   ["14:03:28", "Whale entered YES on SOL ETF", "+$1.8M"],
   ["14:03:31", "Narrative momentum increased across institutional crypto accounts", "+18.4%"],
@@ -61,21 +111,39 @@ const feed = [
   ["14:03:42", "Oracle Consensus shifted bullish on SOL ETF approval", "71.2"],
   ["14:03:47", "Resolution Agent flagged clean expiry language", "91"],
   ["14:03:54", "Macro Agent reduced risk discount after ETF flow data", "+4.2"],
-  ["14:04:02", "Narrative Watch found emerging APAC policy catalyst", "NEW"],
+  ["14:04:02", "Narrative Intelligence found emerging APAC policy catalyst", "NEW"],
 ];
 
 const alerts = [
-  ["High conviction divergence", "OracleX is 6.4 pts above Polymarket on SOL ETF.", "critical"],
-  ["Whale cluster active", "Three linked wallets are accumulating YES exposure.", "watch"],
-  ["Narrative shift", "ETF approval narrative is accelerating faster than price.", "signal"],
+  {
+    title: "High conviction divergence",
+    type: "critical",
+    impact: "OracleX probability is +6.4 pts above public market pricing.",
+    source: "Pricing + smart money + narrative confirmation.",
+    why: "Public pricing may be lagging intelligence signals.",
+  },
+  {
+    title: "Whale cluster active",
+    type: "watch",
+    impact: "Linked wallets are accumulating YES exposure.",
+    source: "Wallet flow monitoring.",
+    why: "Coordinated wallet activity can precede probability repricing.",
+  },
+  {
+    title: "Narrative shift",
+    type: "signal",
+    impact: "ETF approval narrative is accelerating faster than price.",
+    source: "Narrative monitoring.",
+    why: "Narrative acceleration can pull market probability higher.",
+  },
 ];
 
 const breakdown = [
-  ["Market depth", 86],
-  ["Narrative velocity", 94],
-  ["Wallet concentration", 88],
-  ["Truth confidence", 81],
-  ["Resolution clarity", 91],
+  ["Market depth", 86, "Strong", "Order book support and liquidity quality"],
+  ["Narrative velocity", 94, "Very Strong", "Speed of narrative growth across relevant sources"],
+  ["Wallet concentration", 88, "Strong", "Degree of smart money clustering"],
+  ["Truth confidence", 81, "Strong", "Reliability of source and claim evidence"],
+  ["Resolution clarity", 91, "Very Strong", "How clearly the market can be resolved"],
 ];
 
 export default function TerminalPage() {
@@ -90,27 +158,25 @@ function TerminalDashboard() {
   const selected = markets[0];
   const { plan } = useCurrentPlan();
   const isObserver = plan === "observer";
-  const visibleAgents = isObserver ? agents.slice(0, 2) : agents;
+  const visibleDrivers = isObserver ? intelligenceDrivers.slice(0, 2) : intelligenceDrivers;
 
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="grid min-w-0 gap-4">
-        <div className="grid gap-4 lg:grid-cols-4">
-          {[
-            ["Oracle Consensus", "87.4", "+12.0 pts", TrendingUp],
-            ["Markets Scanned", "1,284", "42 sectors", Database],
-            ["Whale Flow", "$3.8M", "YES bias", Wallet],
-            ["Signal Latency", "8.4s", "p95 stable", Activity],
-          ].map(([label, value, detail, Icon], index) => (
-            <motion.div key={label as string} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
-              <Panel>
+        <div className="relative z-30 grid gap-4 overflow-visible lg:grid-cols-4">
+          {overviewMetrics.map(({ label, value, detail, Icon, info, align }, index) => (
+            <motion.div key={label} className="relative overflow-visible hover:z-50" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
+              <Panel className="overflow-visible">
                 <CardContent className="p-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label as string}</span>
-                    <Icon className="size-4 text-blue-200" />
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</span>
+                      <InfoTooltip label={`Explain ${label}`} align={align}>{info}</InfoTooltip>
+                    </span>
+                    <Icon className="size-4 shrink-0 text-blue-200" />
                   </div>
-                  <div className="font-mono text-3xl tracking-[-0.05em] text-white">{value as string}</div>
-                  <div className="mt-2 text-xs text-blue-200">{detail as string}</div>
+                  <div className="font-mono text-3xl tracking-[-0.05em] text-white">{value}</div>
+                  <div className="mt-2 text-xs text-blue-200">{detail}</div>
                 </CardContent>
               </Panel>
             </motion.div>
@@ -188,18 +254,16 @@ function TerminalDashboard() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader title="Consensus Summary" action={isObserver ? "Basic signals" : "4 live agents"} />
+            <PanelHeader title="Intelligence Drivers" action={isObserver ? "Basic signals" : "Why bullish"} />
             <CardContent className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-              {visibleAgents.map(([name, confidence, signal, bias]) => (
+              {visibleDrivers.map(([name, confidence, signal, bias]) => (
                 <div key={name} className="relative rounded-xl border border-white/[0.075] bg-white/[0.025] p-4">
-                  <div className="mb-4 min-h-10 pr-20">
+                  <div className="mb-4 flex min-h-[4.25rem] flex-col items-start justify-between gap-2">
                     <div className="text-sm font-semibold leading-5 text-white">{name}</div>
-                    <div className="absolute right-4 top-4">
-                      <BiasBadge bias={bias} />
-                    </div>
+                    <BiasBadge bias={bias} />
                   </div>
                   <div className="mb-3 flex items-end justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">Confidence</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">Driver strength</span>
                     <span className="font-mono text-2xl tracking-[-0.05em] text-blue-100">{confidence}</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
@@ -214,22 +278,41 @@ function TerminalDashboard() {
                     <Lock className="size-4" />
                     Analyst upgrade
                   </div>
-                  <h2 className="text-sm font-semibold text-white">Upgrade to Analyst for real-time wallet intelligence, consensus engine, and advanced filters.</h2>
+                  <h2 className="text-sm font-semibold text-white">Upgrade to Analyst for real-time Prediction Market Analytics, Narrative Intelligence, and advanced filters.</h2>
                 </div>
               ) : null}
             </CardContent>
           </Panel>
 
-          <Panel>
-            <PanelHeader title="Market Alerts" action="Priority" />
+          <Panel className="overflow-visible">
+            <PanelHeader
+              title="Market Alerts"
+              action="Priority"
+              info={
+                <InfoTooltip label="Explain Market Alerts" align="right">
+                  Market Alerts highlight the highest-priority developments currently affecting the selected prediction market, including pricing divergence, smart money movement, narrative shifts, liquidity changes, and resolution risk.
+                </InfoTooltip>
+              }
+            />
             <CardContent className="space-y-3 p-4">
-              {alerts.map(([title, detail, type]) => (
-                <div key={title} className="rounded-xl border border-white/[0.075] bg-black/28 p-3">
+              {alerts.map((alert) => (
+                <div key={alert.title} className="rounded-xl border border-white/[0.075] bg-black/28 p-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                    {type === "critical" ? <AlertTriangle className="size-4 text-red-200" /> : <Zap className="size-4 text-blue-200" />}
-                    {title}
+                    {alert.type === "critical" ? <AlertTriangle className="size-4 text-red-200" /> : <Zap className="size-4 text-blue-200" />}
+                    {alert.title}
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
+                  <div className="mt-3 grid gap-2 text-xs leading-5">
+                    {[
+                      ["Impact", alert.impact],
+                      ["Source", alert.source],
+                      ["Why it matters", alert.why],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100">{label}: </span>
+                        <span className="text-slate-400">{value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -275,14 +358,27 @@ function TerminalDashboard() {
           </CardContent>
         </Panel>
 
-        <Panel>
-          <PanelHeader title="Signal Breakdown" />
+        <Panel className="overflow-visible">
+          <PanelHeader
+            title="Signal Breakdown"
+            info={
+              <InfoTooltip label="Explain Signal Breakdown" align="right">
+                Signal Breakdown shows the core factors driving OracleX&apos;s probability view for the selected market. Higher values indicate stronger support from that signal category.
+              </InfoTooltip>
+            }
+          />
           <CardContent className="space-y-4 p-4">
-            {breakdown.map(([label, value]) => (
+            {breakdown.map(([label, value, interpretation, description]) => (
               <div key={label as string}>
-                <div className="mb-2 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">{label as string}</span>
-                  <span className="font-mono text-blue-100">{value as number}</span>
+                <div className="mb-2 flex items-start justify-between gap-3 text-xs">
+                  <span>
+                    <span className="block text-slate-300">{label as string}</span>
+                    <span className="mt-1 block text-[11px] leading-4 text-slate-500">{description as string}</span>
+                  </span>
+                  <span className="shrink-0 text-right font-mono text-blue-100">
+                    {value as number}
+                    <span className="ml-1 text-[10px] uppercase tracking-[0.1em] text-slate-400">{interpretation as string}</span>
+                  </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                   <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-200" style={{ width: `${value}%` }} />

@@ -25,7 +25,7 @@ const billingPlans: BillingPlan[] = [
     price: "$8/month",
     amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
-    description: "Entry-level access to OracleX intelligence previews.",
+    description: "Entry-level access to OracleX intelligence previews and event intelligence previews.",
   },
   {
     plan: "analyst",
@@ -33,7 +33,7 @@ const billingPlans: BillingPlan[] = [
     price: "$24/month",
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
-    description: "Real-time wallet intelligence, consensus access, and advanced filters.",
+    description: "Real-time prediction market analytics, narrative intelligence, and advanced filters.",
   },
   {
     plan: "operator",
@@ -41,7 +41,7 @@ const billingPlans: BillingPlan[] = [
     price: "$69/month",
     amountUsd: 69,
     checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
-    description: "Full terminal access, signal monitoring, flows, alerts, and watchlists.",
+    description: "Full terminal access, signal monitoring, Hyperliquid flows, alerts, and watchlists.",
   },
   {
     plan: "enterprise",
@@ -54,11 +54,11 @@ const billingPlans: BillingPlan[] = [
 
 const accessRows: { module: string; plans: Plan[] }[] = [
   { module: "Live Feed", plans: ["observer", "analyst", "operator", "enterprise"] },
-  { module: "Wallet Intelligence", plans: ["observer", "analyst", "operator", "enterprise"] },
-  { module: "Narrative Watch", plans: ["observer", "analyst", "operator", "enterprise"] },
-  { module: "Consensus Engine", plans: ["analyst", "operator", "enterprise"] },
+  { module: "Market Events", plans: ["observer", "analyst", "operator", "enterprise"] },
+  { module: "Prediction Market Analytics", plans: ["observer", "analyst", "operator", "enterprise"] },
+  { module: "Narrative Intelligence", plans: ["observer", "analyst", "operator", "enterprise"] },
   { module: "Signal Monitor", plans: ["operator", "enterprise"] },
-  { module: "Cross-Market Flows", plans: ["operator", "enterprise"] },
+  { module: "Hyperliquid Flows", plans: ["operator", "enterprise"] },
   { module: "APIs", plans: ["enterprise"] },
   { module: "Webhooks", plans: ["enterprise"] },
   { module: "Enterprise Feeds", plans: ["enterprise"] },

@@ -452,7 +452,7 @@ function SelectControl<T extends string>({ label, value, options, onChange }: { 
 
 export default function CrossMarketFlowsPage() {
   return (
-    <FeatureGate feature="crossMarketFlows" explanation="Cross-Market Flows are part of the Operator terminal and Enterprise workspace.">
+    <FeatureGate feature="crossMarketFlows" explanation="Hyperliquid Flows are part of the Operator terminal and Enterprise workspace.">
       <CrossMarketFlowsWorkspace />
     </FeatureGate>
   );

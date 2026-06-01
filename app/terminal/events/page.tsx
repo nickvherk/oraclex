@@ -26,7 +26,7 @@ function importanceTone(importance: string) {
 
 export default function EventsPage() {
   return (
-    <FeatureGate feature="liveFeed" explanation="Market Events are part of the OracleX live intelligence workspace.">
+    <FeatureGate feature="marketEvents" explanation="Market Events are available from Observer access and above.">
       <MarketEventsWorkspace />
     </FeatureGate>
   );
@@ -37,7 +37,7 @@ function MarketEventsWorkspace() {
   const selected = liveCatalysts.find((event) => event.title === selectedTitle) ?? liveCatalysts[0];
   const detailSections: Array<[string, string[], LucideIcon]> = [
     ["Affected Markets", selected.affectedMarkets, Landmark],
-    ["Related Narratives", selected.narratives, Globe2],
+    ["Related Narrative Intelligence", selected.narratives, Globe2],
   ];
 
   return (

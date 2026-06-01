@@ -397,7 +397,7 @@ function useWalletIntelligenceData() {
 
     fetch("/api/wallet-intelligence")
       .then((response) => {
-        if (!response.ok) throw new Error("Wallet intelligence API failed");
+        if (!response.ok) throw new Error("Prediction market analytics API failed");
         return response.json() as Promise<unknown>;
       })
       .then((payload) => {
@@ -429,7 +429,7 @@ function useWalletIntelligenceData() {
 
 export default function WalletIntelligencePage() {
   return (
-    <FeatureGate feature="walletIntelligence" explanation="Wallet Intelligence starts at Observer access. Sign in with a demo account or upgrade your plan.">
+    <FeatureGate feature="walletIntelligence" explanation="Prediction Market Analytics starts at Observer access. Sign in with a demo account or upgrade your plan.">
       <WalletIntelligenceByPlan />
     </FeatureGate>
   );
@@ -455,7 +455,7 @@ function ObserverWalletIntelligence({ walletData }: { walletData: ReturnType<typ
       <div className="grid gap-4">
         <section className="rounded-xl border border-white/[0.075] bg-[#070b14]/86 p-4">
           <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Observer wallet summary</Badge>
-          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">Basic Wallet Intelligence</h1>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">Basic Prediction Market Analytics</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Observer access includes a limited view of top wallet behavior, active volume, and basic smart money bias. Advanced filters and full wallet analytics require Analyst access.</p>
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {[
@@ -506,7 +506,7 @@ function ObserverWalletIntelligence({ walletData }: { walletData: ReturnType<typ
                   <div className="mt-2 h-2 w-1/2 rounded-full bg-white/10" />
                   <div className="mt-5 font-mono text-2xl text-white">--</div>
                 </div>
-                <PremiumLockedOverlay copy="Unlock full Wallet Intelligence with Analyst" />
+                <PremiumLockedOverlay copy="Unlock full Prediction Market Analytics with Analyst" />
               </div>
             ))}
           </CardContent>
@@ -627,7 +627,7 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
         <section className="rounded-xl border border-white/[0.075] bg-[#070b14]/86 p-4">
           <div className="mb-4 flex flex-col gap-3 border-b border-white/[0.075] pb-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Wallet intelligence system</Badge>
+              <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Prediction market analytics system</Badge>
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">What are the best prediction market wallets doing right now?</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX tracks a large universe of top Polymarket wallets, category specialists, smart money clusters, and repeat winners to turn wallet behavior into data-backed intelligence.</p>
             </div>
@@ -655,7 +655,7 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
         </section>
 
         <Panel>
-          <PanelHeader title="Wallet Intelligence Filters" action="Advanced hidden by default" />
+          <PanelHeader title="Prediction Market Analytics Filters" action="Advanced hidden by default" />
           <CardContent className="space-y-4 p-4">
             <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_160px_150px_160px_auto]">
               <label className="flex h-10 min-w-0 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3">

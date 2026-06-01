@@ -48,14 +48,14 @@ const metrics = [
 
 const problems = [
   ["Fragmented information", "Market, wallet, narrative, liquidity, and news signals remain split across disconnected systems."],
-  ["Narrative lag", "Consensus often reprices before operators can identify why the shift is happening."],
+  ["Narrative lag", "Market narratives often reprice before operators can identify why the shift is happening."],
   ["Hidden smart money positioning", "Large wallets and repeat winners move before the market sees their direction."],
   ["Disconnected derivatives flows", "Leverage, funding, and liquidity rotations rarely resolve into one operational view."],
   ["Low explainability", "Probability movement is visible, but attribution and confidence are often missing."],
   ["Inefficient interpretation", "Teams still spend too much time assembling context before acting on a signal."],
 ];
 
-const gapDrivers = ["narratives accelerate", "whales reposition", "leverage expands", "liquidity rotates", "consensus shifts"];
+const gapDrivers = ["narratives accelerate", "whales reposition", "leverage expands", "liquidity rotates", "confirmation shifts"];
 
 const missingLayer = ["infrastructure", "intelligence systems", "operational tooling"];
 
@@ -66,8 +66,8 @@ const solutionPillars = [
     Icon: GitBranch,
   },
   {
-    title: "AI Consensus Infrastructure",
-    copy: "Specialized agents evaluate competing evidence and publish confidence-weighted consensus for markets, narratives, and flows.",
+    title: "Narrative Intelligence",
+    copy: "Specialized agents evaluate competing evidence, source agreement, conflicts, and market impact across active narratives.",
     Icon: BrainCircuit,
   },
   {
@@ -86,13 +86,13 @@ const liveSignals = [
 const flowExamples = [
   ["Liquidity rotation", "BTC election hedge flow moving into policy markets", "3 venues"],
   ["Leverage expansion", "Funding pressure rising while YES depth thins", "2.8x"],
-  ["Consensus break", "Public probability flat while agent confidence climbs", "+14.2"],
+  ["Confirmation break", "Public probability flat while agent confidence climbs", "+14.2"],
 ];
 
 const whyCards = [
-  ["Smart Money Intelligence", "Detect repeat winner wallets, directional exposure, entry timing, and conviction changes before the market fully reprices.", WalletCards],
-  ["Cross-Market Flows", "Connect prediction markets with derivatives, liquidity venues, funding pressure, and narrative-adjacent rotations.", Layers3],
-  ["Narrative Infrastructure", "Track emerging clusters, narrative velocity, source quality, and market correlation across event domains.", Network],
+  ["Prediction Market Analytics", "Detect repeat winner wallets, directional exposure, entry timing, and conviction changes before the market fully reprices.", WalletCards],
+  ["Hyperliquid Flows", "Connect prediction markets with derivatives, liquidity venues, funding pressure, and narrative-adjacent rotations.", Layers3],
+  ["Narrative Intelligence", "Track emerging clusters, narrative velocity, source quality, source agreement, conflicts, and market correlation across event domains.", Network],
   ["Real-Time Signals", "Convert raw movement into monitored alerts, ranked opportunities, and machine-readable operational feeds.", RadioTower],
   ["Explainable Intelligence", "Attach source evidence, confidence, and attribution to every market-moving signal instead of publishing opaque scores.", ShieldCheck],
   ["Enterprise APIs", "Deliver prediction intelligence through APIs, webhooks, and feeds designed for institutional systems.", Code2],
@@ -200,7 +200,7 @@ export default function WhyOracleXPage() {
                   </svg>
                   <div className="absolute left-5 top-5">
                     <div className="font-mono text-6xl font-medium tracking-[-0.05em] text-white">87.4</div>
-                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-blue-200/90">consensus confidence</div>
+                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-blue-200/90">narrative confidence</div>
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 grid grid-cols-3 gap-2.5">
                     {["Whales 88", "Narrative 94", "Liquidity 86"].map((item) => (
@@ -246,7 +246,7 @@ export default function WhyOracleXPage() {
         <motion.div {...fadeUp}>
           <Label>The Gap</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Markets move before the market explains itself.</h2>
-          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">The informational edge is no longer only the probability. It is the ability to see why consensus is changing, where conviction is forming, and which flows are driving the move.</p>
+          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">The informational edge is no longer only the probability. It is the ability to see why narrative confirmation is changing, where conviction is forming, and which flows are driving the move.</p>
         </motion.div>
         <motion.div {...fadeUp} className="grid gap-4">
           <div className="rounded-2xl border border-white/[0.085] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.24))] p-5">

@@ -253,7 +253,7 @@ export const liveCatalysts: LiveCatalyst[] = [
       {
         time: "8h ago",
         headline: "Linked wallets added directional exposure across SOL ETF probability markets.",
-        source: "OracleX Wallet Intelligence",
+        source: "OracleX Prediction Market Analytics",
         sourceUrl: "https://polymarket.com/",
       },
       {

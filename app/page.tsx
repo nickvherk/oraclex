@@ -33,7 +33,7 @@ const DOCS_URL = "https://oracle-x-2.gitbook.io/oraclex-documentation/";
 const X_URL = "https://x.com/oraclexterminal";
 
 const navLinks = [
-  { label: "Consensus", href: "#consensus" },
+  { label: "Narrative Intelligence", href: "#narrative-intelligence" },
   { label: "Terminal", href: "#terminal" },
   { label: "Infrastructure", href: "#infrastructure" },
   { label: "Why OracleX", href: "/why-oraclex" },
@@ -42,7 +42,7 @@ const navLinks = [
 
 const heroMetrics = [
   ["128", "Markets Scanned"],
-  ["87.4", "AI Consensus"],
+  ["87.4", "Narrative Score"],
   ["8.4s", "Signal Latency"],
   ["+18%", "Narrative Velocity"],
 ];
@@ -51,7 +51,7 @@ const feedItems = [
   ["14:03:28", "Whale entered YES on SOL ETF", "+$1.8M"],
   ["14:03:31", "Narrative velocity increasing", "+18.4%"],
   ["14:03:34", "Truth confidence dropped to 81%", "-7.0%"],
-  ["14:03:39", "AI consensus turned bullish", "87.4"],
+  ["14:03:39", "Narrative intelligence turned bullish", "87.4"],
   ["14:03:42", "Market probability shifted", "+12.0%"],
   ["14:03:47", "Liquidity imbalance detected", "HIGH"],
 ];
@@ -66,7 +66,7 @@ const agents = [
 ];
 
 const markets = [
-  ["SOL ETF Approval", "64.8%", "+12.0%", "Bullish consensus"],
+  ["SOL ETF Approval", "64.8%", "+12.0%", "Bullish confirmation"],
   ["Trump Election Odds", "49.7%", "+3.2%", "Narrative rising"],
   ["Bitcoin ATH Probability", "58.6%", "-2.4%", "Momentum cooling"],
   ["AI Narrative Momentum", "81.3%", "+18.4%", "High velocity"],
@@ -95,11 +95,11 @@ const pipelineSteps = [
   },
   {
     label: "02",
-    eyebrow: "Consensus engine",
+    eyebrow: "Narrative intelligence",
     title: "Agent arbitration layer",
     metric: "8.4s",
     metricLabel: "intelligence latency",
-    items: ["24/7 AI consensus", "87.4 consensus score", "9 active model families", "0.92 signal confidence"],
+    items: ["24/7 narrative intelligence", "87.4 confirmation score", "9 active model families", "0.92 signal confidence"],
     Icon: BrainCircuit,
   },
   {
@@ -119,13 +119,13 @@ const pipelineMetrics = [
   ["2.1M", "Signals processed daily"],
   ["418", "Narrative clusters"],
   ["8.4s", "Average latency"],
-  ["24/7", "AI consensus refresh"],
+  ["24/7", "Narrative refresh"],
 ];
 
 const outputAlerts = [
   ["14:03:42", "webhook.probability_shift", "SOL ETF YES +12.0%", "87.4 conf"],
   ["14:03:47", "alert.smart_money_flow", "$1.8M net YES flow", "HIGH"],
-  ["14:03:51", "api.consensus.update", "Truth 81 | Narrative 94", "LIVE"],
+  ["14:03:51", "api.narrative.update", "Truth 81 | Narrative 94", "LIVE"],
 ];
 
 const probabilityDistribution = [
@@ -142,7 +142,7 @@ const standardPlans = [
     amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
     description: "Entry-level access to OracleX intelligence systems.",
-    features: ["Delayed intelligence feed", "Basic wallet tracking", "Limited narrative watch", "Community access", "Basic consensus signals"],
+    features: ["Delayed intelligence feed", "Event intelligence previews", "Basic prediction market tracking", "Limited narrative intelligence", "Community access", "Basic confirmation signals"],
   },
   {
     plan: "analyst" as Plan,
@@ -151,7 +151,7 @@ const standardPlans = [
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
     description: "Advanced intelligence access for active prediction traders.",
-    features: ["Real-time intelligence feed", "Wallet intelligence", "Narrative tracking", "Consensus engine access", "Advanced filtering", "Smart money signals"],
+    features: ["Real-time intelligence feed", "Market Events", "Prediction market analytics", "Narrative tracking", "Narrative intelligence access", "Advanced filtering", "Smart money signals"],
     popular: true,
   },
   {
@@ -161,7 +161,7 @@ const standardPlans = [
     amountUsd: 69,
     checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
     description: "Full intelligence workspace access for high-conviction operators.",
-    features: ["Full terminal access", "Cross-market flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
+    features: ["Full terminal access", "Market Events", "Hyperliquid flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
   },
   {
     plan: "enterprise" as Plan,
@@ -169,12 +169,12 @@ const standardPlans = [
     price: "Custom",
     amountUsd: 0,
     description: "Institutional prediction intelligence infrastructure.",
-    features: ["Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations", "Institutional infrastructure access"],
+    features: ["Intelligence APIs", "Market Events", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations", "Institutional infrastructure access"],
     enterprise: true,
   },
 ];
 
-const enterpriseAccess = ["Intelligence APIs", "Consensus feeds", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
+const enterpriseAccess = ["Intelligence APIs", "Narrative intelligence feeds", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
 
 type HomepagePricingPlan = Extract<Plan, "observer" | "analyst" | "operator">;
 
@@ -234,11 +234,11 @@ function HeroTerminal() {
   return (
     <motion.div {...fadeUp} className="relative lg:pt-8">
       <div className="absolute -inset-8 -z-10 bg-blue-500/[0.14] blur-3xl" />
-      <TerminalChrome title="oraclex/live-consensus">
+      <TerminalChrome title="oraclex/narrative-intelligence">
         <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[1fr_0.86fr]">
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between">
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">Oracle Consensus Score™</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500">OracleX Narrative Score™</span>
               <span className="font-mono text-[11px] text-blue-200">LIVE</span>
             </div>
             <div className="relative h-64 overflow-hidden rounded-2xl border border-blue-300/[0.12] bg-black/90">
@@ -406,16 +406,16 @@ function IntelligencePipeline() {
   );
 }
 
-function ConsensusEngine() {
+function NarrativeIntelligenceSection() {
   return (
-    <section id="consensus" className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
+    <section id="narrative-intelligence" className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
       <motion.div {...fadeUp} className="mb-12 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
         <div className="max-w-2xl">
-          <Label>AI Consensus Engine</Label>
+          <Label>AI Narrative Intelligence</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">AI agents competing to predict the future.</h2>
         </div>
         <div className="min-w-72 rounded-2xl border border-blue-300/20 bg-blue-300/[0.055] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
-          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-blue-100/80">Oracle Consensus Score™</div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-blue-100/80">OracleX Narrative Score™</div>
           <div className="mt-3 font-mono text-6xl font-medium tracking-[-0.06em] text-white">87.4</div>
         </div>
       </motion.div>
@@ -524,7 +524,7 @@ function Infrastructure() {
         <motion.div {...fadeUp}>
           <Label>B2B Infrastructure</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Enterprise & B2B Intelligence Infrastructure</h2>
-          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX delivers real-time prediction intelligence APIs and consensus infrastructure for next-generation market platforms.</p>
+          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX delivers real-time prediction intelligence APIs and narrative intelligence infrastructure for next-generation market platforms.</p>
         </motion.div>
         <motion.div {...fadeUp} className="grid gap-4 sm:grid-cols-2">
           {infrastructure.map((item, index) => {
@@ -957,7 +957,7 @@ export default function Home() {
           <Label>Chainlink for prediction intelligence</Label>
           <h1 className="max-w-4xl text-6xl font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:text-8xl lg:text-[6.5rem]">Prediction markets need intelligence.</h1>
           <p className="mt-8 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX is the intelligence infrastructure layer powering next-generation prediction markets on Solana.</p>
-          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Live signals, consensus scoring, wallet intelligence, and enterprise APIs for operational market teams.</p>
+          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Live signals, narrative intelligence, prediction market analytics, and enterprise APIs for operational market teams.</p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <PrimaryButton onClick={openTerminalLogin}>Enter Terminal</PrimaryButton>
             <SecondaryButton>Read Docs</SecondaryButton>
@@ -976,7 +976,7 @@ export default function Home() {
 
       <div className="relative z-10">
         <IntelligenceTerminal />
-        <ConsensusEngine />
+        <NarrativeIntelligenceSection />
         <IntelligencePipeline />
         <PricingSection onEnterAccessLevel={openPricingLogin} />
         <LiveFeed />

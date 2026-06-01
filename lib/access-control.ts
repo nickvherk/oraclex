@@ -13,6 +13,8 @@ export type SubscriptionStatus = "active" | "pending" | "inactive" | "canceled" 
 export type Feature =
   | "terminal"
   | "liveFeed"
+  | "marketEvents"
+  | "narrativeIntelligence"
   | "walletIntelligence"
   | "narrativeWatch"
   | "consensusEngine"
@@ -68,6 +70,8 @@ export const mockUsers: Record<string, { password: string; plan: Plan }> = {
 const featureAccess: Record<Feature, Plan[]> = {
   terminal: ["observer", "analyst", "operator", "enterprise"],
   liveFeed: ["observer", "analyst", "operator", "enterprise"],
+  marketEvents: ["observer", "analyst", "operator", "enterprise"],
+  narrativeIntelligence: ["observer", "analyst", "operator", "enterprise"],
   walletIntelligence: ["observer", "analyst", "operator", "enterprise"],
   narrativeWatch: ["observer", "analyst", "operator", "enterprise"],
   consensusEngine: ["analyst", "operator", "enterprise"],
