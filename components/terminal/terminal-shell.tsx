@@ -39,11 +39,11 @@ const navSections = [
     label: "INTELLIGENCE",
     items: [
       { label: "Live Feed", href: "/terminal", icon: Radio, feature: "liveFeed" },
-      { label: "Signal Monitor", href: "/terminal/signals", icon: Activity, feature: "signalMonitor" },
-      { label: "Narrative Intelligence", href: "/terminal/narratives", icon: BrainCircuit, feature: "narrativeIntelligence", comingSoon: true },
+      { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "marketEvents" },
       { label: "Prediction Market Analytics", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
       { label: "Hyperliquid Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
-      { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "marketEvents" },
+      { label: "Signal Monitor", href: "/terminal/signals", icon: Activity, feature: "signalMonitor" },
+      { label: "Narrative Intelligence", href: "/terminal/narratives", icon: BrainCircuit, feature: "narrativeIntelligence", comingSoon: true },
     ],
   },
   {

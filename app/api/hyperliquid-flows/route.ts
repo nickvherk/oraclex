@@ -1,18 +1,19 @@
-import { fetchMetaAndAssetCtxs } from "@/lib/integrations/hyperliquid";
-
-const TRACKED_ASSETS = ["BTC", "ETH", "SOL", "HYPE", "DOGE", "XRP", "BNB", "FARTCOIN"] as const;
-
-type TrackedAsset = (typeof TRACKED_ASSETS)[number];
+import { HYPERLIQUID_REVALIDATE_SECONDS, fetchMetaAndAssetCtxs } from "@/lib/integrations/hyperliquid";
+import { TRACKED_ASSET_SET, normalizeAssetSymbol } from "@/lib/tracked-hyperliquid-assets";
 
 type HyperliquidUniverseAsset = {
+  asset?: unknown;
+  symbol?: unknown;
+  coin?: unknown;
   name?: unknown;
+  token?: unknown;
   maxLeverage?: unknown;
 };
 
 type HyperliquidAssetContext = Record<string, unknown>;
 
 type AssetFlow = {
-  asset: TrackedAsset;
+  asset: string;
   netFlow7d: number;
   flowVsAvg: number;
   topTraderBias: "Long-heavy" | "Short-heavy" | "Mixed";
@@ -51,22 +52,28 @@ type AssetFlow = {
   };
 };
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   try {
     const raw = await fetchMetaAndAssetCtxs();
     const normalized = normalizeMetaAndAssetCtxs(raw);
 
-    return Response.json({
-      source: "hyperliquid",
-      updatedAt: new Date().toISOString(),
-      assets: normalized,
-      raw: {
-        endpoint: "https://api.hyperliquid.xyz/info",
-        requestBody: { type: "metaAndAssetCtxs" },
+    return Response.json(
+      {
+        source: "hyperliquid",
+        updatedAt: new Date().toISOString(),
+        refresh: "hourly",
+        assets: normalized,
+        raw: {
+          endpoint: "https://api.hyperliquid.xyz/info",
+          requestBody: { type: "metaAndAssetCtxs" },
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": `s-maxage=${HYPERLIQUID_REVALIDATE_SECONDS}, stale-while-revalidate=${HYPERLIQUID_REVALIDATE_SECONDS}`,
+        },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Hyperliquid flow error";
 
@@ -94,17 +101,29 @@ function normalizeMetaAndAssetCtxs(raw: unknown): AssetFlow[] {
     throw new Error("Unexpected Hyperliquid asset context response shape.");
   }
 
-  const selected = TRACKED_ASSETS.map((asset) => {
-    const index = universe.findIndex((item) => item.name === asset);
-    if (index < 0) return null;
+  const normalizedSymbols = universe.map((asset) => normalizeAssetSymbol(asset)).filter((asset): asset is string => Boolean(asset));
+  const allUsableAssets = universe
+    .map((asset, index) => normalizeUniverseAsset(asset, assetContexts[index]))
+    .filter((asset): asset is AssetFlow => Boolean(asset));
+  const selected = allUsableAssets.filter((asset) => TRACKED_ASSET_SET.has(asset.asset));
 
-    const context = assetContexts[index];
-    if (!isRecord(context)) return null;
-
-    return normalizeAssetFlow(asset, universe[index], context);
-  }).filter((asset): asset is AssetFlow => Boolean(asset));
+  if (process.env.NODE_ENV === "development") {
+    console.log("[hyperliquid-flows] metaAndAssetCtxs assets", {
+      rawAssetsLength: universe.length,
+      contextCount: assetContexts.length,
+      rawAssetSymbols: universe.map((asset) => asset.asset ?? asset.symbol ?? asset.coin ?? asset.name ?? asset.token),
+      normalizedSymbols,
+      trackedCount: selected.length,
+    });
+  }
 
   if (selected.length === 0) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[hyperliquid-flows] no tracked assets matched; using UI fallback rows", {
+        trackedAssets: Array.from(TRACKED_ASSET_SET),
+        availableSymbols: allUsableAssets.map((asset) => asset.asset),
+      });
+    }
     throw new Error("No tracked Hyperliquid assets were found in metaAndAssetCtxs.");
   }
 
@@ -133,6 +152,17 @@ function normalizeMetaAndAssetCtxs(raw: unknown): AssetFlow[] {
     .sort((a, b) => b.abnormalFlowIndex - a.abnormalFlowIndex);
 }
 
+function normalizeUniverseAsset(asset: HyperliquidUniverseAsset, context: unknown) {
+  const normalizedAsset = normalizeAssetSymbol(asset);
+  if (!normalizedAsset || !isRecord(context)) return null;
+
+  try {
+    return normalizeAssetFlow(normalizedAsset, asset, context);
+  } catch {
+    return null;
+  }
+}
+
 function getUniverse(meta: unknown): HyperliquidUniverseAsset[] {
   if (!isRecord(meta) || !Array.isArray(meta.universe)) {
     throw new Error("Unexpected Hyperliquid metadata response shape.");
@@ -141,7 +171,7 @@ function getUniverse(meta: unknown): HyperliquidUniverseAsset[] {
   return meta.universe.filter(isRecord);
 }
 
-function normalizeAssetFlow(asset: TrackedAsset, universeAsset: HyperliquidUniverseAsset, context: HyperliquidAssetContext): AssetFlow {
+function normalizeAssetFlow(asset: string, universeAsset: HyperliquidUniverseAsset, context: HyperliquidAssetContext): AssetFlow {
   const markPrice = firstNumber(context.markPx, context.midPx, context.oraclePx);
   const previousDayPrice = firstNumber(context.prevDayPx, context.previousDayPx, context.markPx, context.midPx, context.oraclePx);
   const openInterest = firstNumber(context.openInterest, context.oi, context.openInterestUsd) ?? 0;
@@ -239,19 +269,22 @@ function getInterpretation(flowBias: "Bullish" | "Bearish" | "Neutral", flowType
   return "Balanced market flow";
 }
 
-function getRelatedMarkets(asset: TrackedAsset) {
-	  const markets: Record<TrackedAsset, string[]> = {
-	    BTC: ["BTC ATH Probability", "Bitcoin Weekly Close", "ETF inflow continuation"],
-	    ETH: ["ETH Ecosystem Rotation", "ETH ETF relative inflows", "ETH/BTC underperformance"],
-	    SOL: ["SOL ETF Approval", "SOL ecosystem TVL", "L1 rotation"],
-	    HYPE: ["AI Agent Market Share", "HYPE ecosystem revenue", "On-chain trading infra"],
-	    DOGE: ["DOGE ETF speculation", "Meme rotation", "Retail risk appetite"],
-	    XRP: ["XRP ETF odds", "SEC settlement outcomes", "Payment-token rotation"],
-	    BNB: ["Exchange token regulation", "BNB chain activity", "CEX market share"],
-	    FARTCOIN: ["Meme coin momentum", "Retail rotation", "High-beta crypto baskets"],
-	  };
+function getRelatedMarkets(asset: string) {
+  const markets: Record<string, string[]> = {
+    BTC: ["BTC ATH Probability", "Bitcoin Weekly Close", "ETF inflow continuation"],
+    ETH: ["ETH Ecosystem Rotation", "ETH ETF relative inflows", "ETH/BTC underperformance"],
+    SOL: ["SOL ETF Approval", "SOL ecosystem TVL", "L1 rotation"],
+    HYPE: ["AI Agent Market Share", "HYPE ecosystem revenue", "On-chain trading infra"],
+    DOGE: ["DOGE ETF speculation", "Meme rotation", "Retail risk appetite"],
+    XRP: ["XRP ETF odds", "SEC settlement outcomes", "Payment-token rotation"],
+    BNB: ["Exchange token regulation", "BNB chain activity", "CEX market share"],
+    ADA: ["Large-cap alt rotation", "L1 relative strength", "ADA ecosystem activity"],
+    TRX: ["Stable settlement activity", "TRON network flows", "Large-cap defensives"],
+    LINK: ["Oracle infrastructure demand", "DeFi data-layer rotation", "LINK ecosystem catalysts"],
+    FARTCOIN: ["Meme coin momentum", "Retail rotation", "High-beta crypto baskets"],
+  };
 
-  return markets[asset];
+  return markets[asset] ?? [`${asset} probability repricing`, `${asset} liquidity rotation`, `${asset} volatility expansion`];
 }
 
 function firstNumber(...values: unknown[]) {
@@ -265,6 +298,10 @@ function firstNumber(...values: unknown[]) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStablecoinAsset(asset: string) {
+  return ["USDT", "USDC", "DAI", "USDE", "FDUSD", "TUSD", "PYUSD", "USDD", "FRAX", "LUSD"].includes(asset);
 }
 
 function clamp(value: number, min: number, max: number) {

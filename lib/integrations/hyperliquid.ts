@@ -2,6 +2,7 @@ import "server-only";
 
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 const HYPERLIQUID_TIMEOUT_MS = 10000;
+export const HYPERLIQUID_REVALIDATE_SECONDS = 3600;
 
 type HyperliquidInfoBody =
   | { type: "metaAndAssetCtxs" }
@@ -32,7 +33,7 @@ export async function hyperliquidInfo<T = unknown>(body: HyperliquidInfoBody): P
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      cache: "no-store",
+      next: { revalidate: HYPERLIQUID_REVALIDATE_SECONDS },
       signal: controller.signal,
     });
 
