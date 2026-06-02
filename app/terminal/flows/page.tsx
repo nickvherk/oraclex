@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, Database, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, Database, Info, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
 import { FeatureGate } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 
-const assets = ["All", "BTC", "ETH", "SOL", "HYPE"] as const;
+const assets = ["All", "BTC", "ETH", "SOL", "HYPE", "DOGE", "XRP", "BNB", "FARTCOIN"] as const;
 const timeframes = ["1H", "4H", "24H", "7D", "30D"] as const;
 const traderGroups = ["Top 20", "Top 50", "Top 100", "Smart Money", "Whales"] as const;
 const flowTypes = ["All Flows", "Inflows", "Outflows", "OI Build-Up", "Leverage Build-Up", "Asset Rotation"] as const;
@@ -45,6 +45,7 @@ type AssetFlow = {
   interpretation: string;
   flowType: Exclude<FlowType, "All Flows">;
   traderCount: number;
+  topWalletCount?: number;
   minInflow: number;
   relatedMarkets: string[];
   rawDatapoints: string[];
@@ -75,11 +76,17 @@ type TopTraderProfile = {
   wallet: string;
   primaryAsset: Exclude<Asset, "All">;
   specialization: string;
+  globalRank: number;
+  lifetimePnl: number;
+  lifetimeRoi: number;
   exposureShare: number;
   roi30dBase: number;
   historicalRoi: number;
   historicalAccuracy: number;
   winRate: number;
+  avgHoldingTime: string;
+  bestAsset: Exclude<Asset, "All">;
+  worstAsset: Exclude<Asset, "All">;
   leverageDelta: number;
   activity: string;
 };
@@ -98,8 +105,14 @@ type TopTraderIntelligence = {
   currentBias: MarketBias;
   lastActivity: string;
   specialization: string;
+  globalRank: number;
+  lifetimePnl: number;
+  lifetimeRoi: number;
   historicalRoi: number;
   historicalAccuracy: number;
+  avgHoldingTime: string;
+  bestAsset: Exclude<Asset, "All">;
+  worstAsset: Exclude<Asset, "All">;
   openExposure: number;
   smartMoneyRating: number;
   flowInfluenceScore: number;
@@ -142,6 +155,7 @@ const mockAssetFlows: AssetFlow[] = [
     longPct: 68,
     avgLeverage: 4.8,
     whaleConcentration: "High",
+    topWalletCount: 15,
     whaleScore: 87,
     abnormalFlowIndex: 87,
     smartMoneyConcentration: 81,
@@ -166,6 +180,7 @@ const mockAssetFlows: AssetFlow[] = [
     longPct: 64,
     avgLeverage: 3.9,
     whaleConcentration: "Medium",
+    topWalletCount: 5,
     whaleScore: 72,
     abnormalFlowIndex: 82,
     smartMoneyConcentration: 76,
@@ -190,6 +205,7 @@ const mockAssetFlows: AssetFlow[] = [
     longPct: 41,
     avgLeverage: 3.2,
     whaleConcentration: "Medium",
+    topWalletCount: 9,
     whaleScore: 69,
     abnormalFlowIndex: 74,
     smartMoneyConcentration: 64,
@@ -214,6 +230,7 @@ const mockAssetFlows: AssetFlow[] = [
     longPct: 52,
     avgLeverage: 5.1,
     whaleConcentration: "High",
+    topWalletCount: 12,
     whaleScore: 84,
     abnormalFlowIndex: 71,
     smartMoneyConcentration: 79,
@@ -228,17 +245,111 @@ const mockAssetFlows: AssetFlow[] = [
     historicalComparison: "BTC flow is only +6% above average, but OI acceleration and 5.1x average leverage place it in a high-risk leverage window.",
     aiExplanation: "BTC OI is +21.6% over 7D while net flow is +$12.8M and top trader exposure is 52/48. OracleX classifies this as leverage build-up, not clean directional inflow.",
   },
+  {
+    asset: "DOGE",
+    netFlow7d: 9400000,
+    flowVsAvg: 24,
+    topTraderBias: "Long-heavy",
+    openInterestChange: 18.4,
+    longShortRatio: "61/39",
+    longPct: 61,
+    avgLeverage: 4.2,
+    whaleConcentration: "Medium",
+    topWalletCount: 7,
+    whaleScore: 71,
+    abnormalFlowIndex: 78,
+    smartMoneyConcentration: 69,
+    capitalRotationScore: 74,
+    flowDivergenceIndex: 58,
+    interpretation: "Meme rotation build-up",
+    flowType: "OI Build-Up",
+    traderCount: 46,
+    minInflow: 9400000,
+    relatedMarkets: ["DOGE ETF speculation", "Meme rotation", "Retail risk appetite"],
+    rawDatapoints: ["+$9.4M 7D net flow", "+20% versus 30D average", "Top 50 traders 61% long", "Open interest +18.4%"],
+    historicalComparison: "DOGE flow is above the 30D mean and concentrated in high-beta rotation wallets.",
+    aiExplanation: "DOGE shows +20% flow expansion with OI up +18.4% and top traders 61% long. OracleX classifies this as meme rotation build-up.",
+  },
+  {
+    asset: "XRP",
+    netFlow7d: 7200000,
+    flowVsAvg: 14,
+    topTraderBias: "Mixed",
+    openInterestChange: 10.8,
+    longShortRatio: "54/46",
+    longPct: 54,
+    avgLeverage: 3.6,
+    whaleConcentration: "Low",
+    topWalletCount: 4,
+    whaleScore: 58,
+    abnormalFlowIndex: 67,
+    smartMoneyConcentration: 61,
+    capitalRotationScore: 63,
+    flowDivergenceIndex: 49,
+    interpretation: "Event-risk positioning",
+    flowType: "OI Build-Up",
+    traderCount: 42,
+    minInflow: 720,
+    relatedMarkets: ["XRP ETF odds", "SEC settlement outcomes", "Payment-token rotation"],
+    rawDatapoints: ["+$7.2M 7D net flow", "+14% versus 30D average", "Top 50 traders 54% long", "Open interest +10.8%"],
+    historicalComparison: "XRP positioning is mixed, with OI building faster than directional long bias.",
+    aiExplanation: "XRP flow is positive but only modestly directional. OracleX treats this as event-risk positioning rather than clean accumulation.",
+  },
+  {
+    asset: "BNB",
+    netFlow7d: -6800000,
+    flowVsAvg: -9,
+    topTraderBias: "Short-heavy",
+    openInterestChange: 12.2,
+    longShortRatio: "43/57",
+    longPct: 43,
+    avgLeverage: 3.1,
+    whaleConcentration: "Medium",
+    topWalletCount: 6,
+    whaleScore: 63,
+    abnormalFlowIndex: 70,
+    smartMoneyConcentration: 65,
+    capitalRotationScore: 52,
+    flowDivergenceIndex: 63,
+    interpretation: "Regulatory hedge pressure",
+    flowType: "Outflows",
+    traderCount: 38,
+    minInflow: -6000000,
+    relatedMarkets: ["Exchange token regulation", "BNB chain activity", "CEX market share"],
+    rawDatapoints: ["-$6.0M 7D net flow", "-9% versus 30D average", "Top 50 traders 57% short", "Open interest +12.2%"],
+    historicalComparison: "BNB has negative flow with positive OI, a hedge-heavy pattern in prior regulatory windows.",
+    aiExplanation: "BNB outflows with rising OI suggest defensive short positioning. OracleX classifies this as regulatory hedge pressure.",
+  },
+  {
+    asset: "FARTCOIN",
+    netFlow7d: 420,
+    flowVsAvg: 36,
+    topTraderBias: "Long-heavy",
+    openInterestChange: 34.5,
+    longShortRatio: "66/34",
+    longPct: 66,
+    avgLeverage: 5.7,
+    whaleConcentration: "High",
+    topWalletCount: 8,
+    whaleScore: 82,
+    abnormalFlowIndex: 86,
+    smartMoneyConcentration: 74,
+    capitalRotationScore: 80,
+    flowDivergenceIndex: 76,
+    interpretation: "High-beta leverage rotation",
+    flowType: "Leverage Build-Up",
+    traderCount: 34,
+    minInflow: 420,
+    relatedMarkets: ["Meme coin momentum", "Retail rotation", "High-beta crypto baskets"],
+    rawDatapoints: ["+$4.2M 7D net flow", "+36% versus 30D average", "Top 50 traders 66% long", "Open interest +34.5%"],
+    historicalComparison: "FARTCOIN shows high OI acceleration and leverage concentration, consistent with high-beta rotation windows.",
+    aiExplanation: "FARTCOIN has strong OI expansion, high leverage, and 66% long top-trader bias. OracleX classifies this as high-beta leverage rotation.",
+  },
 ];
 
 const topTraderProfiles: TopTraderProfile[] = [
-  { wallet: "0x7c81...03ef", primaryAsset: "SOL", specialization: "SOL narrative acceleration", exposureShare: 0.021, roi30dBase: 31.4, historicalRoi: 184, historicalAccuracy: 74, winRate: 68, leverageDelta: 1.1, activity: "4m ago" },
-  { wallet: "0x48f3...7704", primaryAsset: "BTC", specialization: "BTC macro leverage cycles", exposureShare: 0.018, roi30dBase: 18.7, historicalRoi: 142, historicalAccuracy: 69, winRate: 64, leverageDelta: 0.8, activity: "7m ago" },
-  { wallet: "0x91d0...5117", primaryAsset: "ETH", specialization: "ETH defensive rotation", exposureShare: 0.016, roi30dBase: 12.9, historicalRoi: 116, historicalAccuracy: 71, winRate: 62, leverageDelta: 0.5, activity: "11m ago" },
-  { wallet: "0xad90...3af4", primaryAsset: "HYPE", specialization: "HYPE ecosystem accumulation", exposureShare: 0.019, roi30dBase: 27.8, historicalRoi: 169, historicalAccuracy: 73, winRate: 67, leverageDelta: 1.3, activity: "16m ago" },
-  { wallet: "0xb3bb...7a83", primaryAsset: "SOL", specialization: "L1 rotation baskets", exposureShare: 0.014, roi30dBase: 22.2, historicalRoi: 137, historicalAccuracy: 66, winRate: 61, leverageDelta: 0.6, activity: "22m ago" },
-  { wallet: "0x5fd2...c881", primaryAsset: "BTC", specialization: "Perp basis compression", exposureShare: 0.012, roi30dBase: 9.6, historicalRoi: 88, historicalAccuracy: 63, winRate: 59, leverageDelta: -0.2, activity: "29m ago" },
-  { wallet: "0xc04a...e129", primaryAsset: "ETH", specialization: "Relative-value hedging", exposureShare: 0.011, roi30dBase: 14.8, historicalRoi: 102, historicalAccuracy: 65, winRate: 60, leverageDelta: 0.4, activity: "37m ago" },
-  { wallet: "0x6a19...42db", primaryAsset: "HYPE", specialization: "On-chain trading infra beta", exposureShare: 0.013, roi30dBase: 25.1, historicalRoi: 158, historicalAccuracy: 70, winRate: 65, leverageDelta: 0.9, activity: "43m ago" },
+  { wallet: "0x7c81...03ef", primaryAsset: "SOL", specialization: "SOL narrative acceleration", globalRank: 12, lifetimePnl: 184, lifetimeRoi: 184, exposureShare: 0.021, roi30dBase: 31.4, historicalRoi: 184, historicalAccuracy: 74, winRate: 68, avgHoldingTime: "8h", bestAsset: "SOL", worstAsset: "ETH", leverageDelta: 1.1, activity: "4m ago" },
+  { wallet: "0x48f3...7704", primaryAsset: "BTC", specialization: "BTC macro leverage cycles", globalRank: 28, lifetimePnl: 150, lifetimeRoi: 142, exposureShare: 0.018, roi30dBase: 18.7, historicalRoi: 142, historicalAccuracy: 69, winRate: 64, avgHoldingTime: "18h", bestAsset: "BTC", worstAsset: "DOGE", leverageDelta: 0.8, activity: "7m ago" },
 ];
 
 const intelligenceCards = [
@@ -375,8 +486,14 @@ function deriveTopTraderIntelligence(flows: AssetFlow[], updatedAt: string | nul
       currentBias,
       lastActivity: usingClockLabel(profile.activity, timestamp),
       specialization: profile.specialization,
+      globalRank: profile.globalRank,
+      lifetimePnl: profile.lifetimePnl,
+      lifetimeRoi: profile.lifetimeRoi,
       historicalRoi: profile.historicalRoi,
       historicalAccuracy: profile.historicalAccuracy,
+      avgHoldingTime: profile.avgHoldingTime,
+      bestAsset: profile.bestAsset,
+      worstAsset: profile.worstAsset,
       openExposure: Math.abs(netExposure),
       smartMoneyRating,
       flowInfluenceScore,

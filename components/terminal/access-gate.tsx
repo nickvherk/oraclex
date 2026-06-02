@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { canAccess, Feature, formatPlan, getRequiredPlan, Plan, useCurrentSession } from "@/lib/access-control";
 
-export function LockedAccessScreen({ requiredPlan, title = "Premium access required", explanation, badgeLabel }: { requiredPlan: Plan; title?: string; explanation?: string; badgeLabel?: string }) {
+export function LockedAccessScreen({ requiredPlan, title = "Premium access required", explanation, badgeLabel, ctaLabel = "Upgrade Access" }: { requiredPlan: Plan; title?: string; explanation?: string; badgeLabel?: string; ctaLabel?: string }) {
   const router = useRouter();
 
   function upgrade() {
@@ -29,7 +29,7 @@ export function LockedAccessScreen({ requiredPlan, title = "Premium access requi
             {explanation ?? `This OracleX workspace is available on the ${formatPlan(requiredPlan)} plan or higher.`}
           </p>
           <button type="button" onClick={upgrade} className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-blue-300/45 bg-[#1f6fff] px-5 text-[13px] font-semibold text-white shadow-[0_18px_48px_rgba(31,111,255,0.22)] transition hover:bg-[#3b82f6]">
-            Upgrade Access
+            {ctaLabel}
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -38,7 +38,7 @@ export function LockedAccessScreen({ requiredPlan, title = "Premium access requi
   );
 }
 
-export function FeatureGate({ feature, children, explanation }: { feature: Feature; children: React.ReactNode; explanation?: string }) {
+export function FeatureGate({ feature, children, explanation, title, badgeLabel, ctaLabel }: { feature: Feature; children: React.ReactNode; explanation?: string; title?: string; badgeLabel?: string; ctaLabel?: string }) {
   const { session, hydrated } = useCurrentSession();
 
   if (!hydrated) return null;
@@ -57,7 +57,7 @@ export function FeatureGate({ feature, children, explanation }: { feature: Featu
   const plan = session?.plan ?? null;
 
   if (!canAccess(plan, feature)) {
-    return <LockedAccessScreen requiredPlan={getRequiredPlan(feature)} explanation={explanation} />;
+    return <LockedAccessScreen requiredPlan={getRequiredPlan(feature)} title={title} explanation={explanation} badgeLabel={badgeLabel} ctaLabel={ctaLabel} />;
   }
 
   return <>{children}</>;

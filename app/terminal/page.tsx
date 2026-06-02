@@ -103,15 +103,17 @@ function InfoTooltip({ label, children, align = "right", width = "w-80" }: { lab
   );
 }
 
+const feedFallback = "Signal update pending interpretation";
+
 const feed = [
-  ["14:03:28", "Whale entered YES on SOL ETF", "+$1.8M"],
-  ["14:03:31", "Narrative momentum increased across institutional crypto accounts", "+18.4%"],
-  ["14:03:34", "Truth confidence dropped after contradictory issuer statement", "-7.0%"],
-  ["14:03:39", "Liquidity imbalance detected on top three venues", "HIGH"],
-  ["14:03:42", "Oracle Consensus shifted bullish on SOL ETF approval", "71.2"],
-  ["14:03:47", "Resolution Agent flagged clean expiry language", "91"],
-  ["14:03:54", "Macro Agent reduced risk discount after ETF flow data", "+4.2"],
-  ["14:04:02", "Narrative Intelligence found emerging APAC policy catalyst", "NEW"],
+  { time: "14:03:28", title: "Whale entered YES on SOL ETF", body: "Linked wallets added exposure while public pricing held flat.", value: "+$1.8M" },
+  { time: "14:03:31", title: "Narrative momentum increased", body: "Institutional crypto accounts are amplifying SOL ETF approval discussion.", value: "+18.4%" },
+  { time: "14:03:34", title: "Truth confidence softened", body: "Contradictory issuer statement reduced source quality on the latest approval thread.", value: "-7.0%" },
+  { time: "14:03:39", title: "Liquidity imbalance detected", body: "YES-side depth is wider than NO-side depth across the top three tracked venues.", value: "HIGH" },
+  { time: "14:03:42", title: "Oracle Consensus shifted bullish", body: "Combined wallet, liquidity, and narrative signals now support a higher approval probability.", value: "71.2" },
+  { time: "14:03:47", title: "Resolution Agent flagged clean language", body: "Market wording maps directly to an observable ETF approval outcome.", value: "91" },
+  { time: "14:03:54", title: "Macro Agent reduced risk discount", body: "ETF flow data lowered the penalty applied to crypto approval markets.", value: "+4.2" },
+  { time: "14:04:02", title: "Narrative Intelligence found APAC catalyst", body: "Regional policy coverage is beginning to reinforce the institutional access thesis.", value: "NEW" },
 ];
 
 const alerts = [
@@ -138,13 +140,47 @@ const alerts = [
   },
 ];
 
-const breakdown = [
-  ["Market depth", 86, "Strong", "Order book support and liquidity quality"],
-  ["Narrative velocity", 94, "Very Strong", "Speed of narrative growth across relevant sources"],
-  ["Wallet concentration", 88, "Strong", "Degree of smart money clustering"],
-  ["Truth confidence", 81, "Strong", "Reliability of source and claim evidence"],
-  ["Resolution clarity", 91, "Very Strong", "How clearly the market can be resolved"],
+const probabilityDriverRows = [
+  {
+    name: "Market Liquidity",
+    impact: 2.1,
+    evidence: "YES side depth is 1.8x stronger than NO side depth.",
+    strength: "Strong",
+    score: 86,
+  },
+  {
+    name: "Narrative Acceleration",
+    impact: 3.4,
+    evidence: "SOL ETF discussion increased across institutional crypto accounts.",
+    strength: "Very Strong",
+    score: 94,
+  },
+  {
+    name: "Wallet Positioning",
+    impact: 4.0,
+    evidence: "Linked wallets accumulated $3.8M YES exposure.",
+    strength: "Strong",
+    score: 88,
+  },
+  {
+    name: "Truth / Source Quality",
+    impact: -1.2,
+    evidence: "Issuer commentary remains mixed across primary sources.",
+    strength: "Moderate",
+    score: 81,
+  },
+  {
+    name: "Resolution Clarity",
+    impact: 2.5,
+    evidence: "Market wording maps clearly to approval outcome.",
+    strength: "Strong",
+    score: 91,
+  },
 ];
+
+const oracleProbability = 71.2;
+const publicMarketProbability = 64.8;
+const probabilityDifference = oracleProbability - publicMarketProbability;
 
 export default function TerminalPage() {
   return (
@@ -183,7 +219,7 @@ function TerminalDashboard() {
           ))}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)]">
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)]">
           <Panel>
             <PanelHeader title="Prediction Markets" action={isObserver ? "Observer preview" : "Live pricing"} />
             <CardContent className="grid gap-3 p-4">
@@ -234,20 +270,26 @@ function TerminalDashboard() {
 
           <Panel>
             <PanelHeader title="Live Intelligence Feed" action={isObserver ? "15 min delayed" : "Streaming"} />
-            <CardContent className="max-h-[524px] space-y-2 overflow-hidden p-4">
-              {feed.map(([time, text, value], index) => (
-                <motion.div key={`${time}-${text}`} className="relative overflow-hidden rounded-xl border border-white/[0.065] bg-black/28" animate={{ opacity: [0.72, 1, 0.84] }} transition={{ duration: 4.5, repeat: Infinity, delay: index * 0.35 }}>
-                  <div className={`flex items-start gap-3 p-3 ${isObserver && index >= 3 ? "blur-[2px]" : ""}`}>
-                    <CircleDot className="mt-0.5 size-3.5 shrink-0 text-blue-200" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-mono text-[10px] text-slate-600">{time}</div>
-                      <div className="mt-1 text-xs leading-5 text-slate-300">{text}</div>
+            <CardContent className="grid gap-2 p-4">
+              {feed.map((item, index) => {
+                const title = item.title.trim() || feedFallback;
+                const body = item.body.trim() || feedFallback;
+
+                return (
+                  <motion.div key={`${item.time}-${title}`} className="relative rounded-xl border border-white/[0.065] bg-black/28" animate={{ opacity: [0.82, 1, 0.88] }} transition={{ duration: 4.5, repeat: Infinity, delay: index * 0.35 }}>
+                    <div className={`flex items-start gap-3 p-3 ${isObserver && index >= 3 ? "blur-[2px]" : ""}`}>
+                      <CircleDot className="mt-0.5 size-3.5 shrink-0 text-blue-200" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-[10px] text-slate-500">{item.time}</div>
+                        <div className="mt-1 text-xs font-medium leading-5 text-slate-100">{title}</div>
+                        <div className="mt-0.5 text-[11px] leading-4 text-slate-400">{body}</div>
+                      </div>
+                      <span className="shrink-0 font-mono text-[10px] text-blue-200">{item.value || "PENDING"}</span>
                     </div>
-                    <span className="font-mono text-[10px] text-blue-200">{value}</span>
-                  </div>
-                  {isObserver && index >= 3 ? <PremiumLockedOverlay copy="Real-time intelligence requires Analyst" compact /> : null}
-                </motion.div>
-              ))}
+                    {isObserver && index >= 3 ? <PremiumLockedOverlay copy="Real-time intelligence requires Analyst" compact /> : null}
+                  </motion.div>
+                );
+              })}
             </CardContent>
           </Panel>
         </div>
@@ -278,7 +320,7 @@ function TerminalDashboard() {
                     <Lock className="size-4" />
                     Analyst upgrade
                   </div>
-                  <h2 className="text-sm font-semibold text-white">Upgrade to Analyst for real-time Prediction Market Analytics, Narrative Intelligence, and advanced filters.</h2>
+                  <h2 className="text-sm font-semibold text-white">Upgrade to Analyst for real-time Prediction Market Analytics and advanced filters.</h2>
                 </div>
               ) : null}
             </CardContent>
@@ -360,31 +402,65 @@ function TerminalDashboard() {
 
         <Panel className="overflow-visible">
           <PanelHeader
-            title="Signal Breakdown"
+            title="Probability Drivers"
             info={
-              <InfoTooltip label="Explain Signal Breakdown" align="right">
-                Signal Breakdown shows the core factors driving OracleX&apos;s probability view for the selected market. Higher values indicate stronger support from that signal category.
+              <InfoTooltip label="Explain Probability Drivers" align="right">
+                Probability Drivers show the factors currently pushing OracleX probability above or below public market pricing. Impacts are expressed as point contributions to the observed probability difference.
               </InfoTooltip>
             }
           />
-          <CardContent className="space-y-4 p-4">
-            {breakdown.map(([label, value, interpretation, description]) => (
-              <div key={label as string}>
-                <div className="mb-2 flex items-start justify-between gap-3 text-xs">
-                  <span>
-                    <span className="block text-slate-300">{label as string}</span>
-                    <span className="mt-1 block text-[11px] leading-4 text-slate-500">{description as string}</span>
-                  </span>
-                  <span className="shrink-0 text-right font-mono text-blue-100">
-                    {value as number}
-                    <span className="ml-1 text-[10px] uppercase tracking-[0.1em] text-slate-400">{interpretation as string}</span>
-                  </span>
+          <CardContent className="space-y-3 p-4">
+            <div className="rounded-xl border border-blue-300/15 bg-blue-300/[0.045] p-3">
+              <p className="text-[11px] leading-5 text-slate-300">
+                Factors currently pushing OracleX probability above or below public market pricing.
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {[
+                  ["OracleX", `${oracleProbability.toFixed(1)}%`, "text-blue-100"],
+                  ["Public", `${publicMarketProbability.toFixed(1)}%`, "text-slate-200"],
+                  ["Difference", `+${probabilityDifference.toFixed(1)} pts`, "text-emerald-200"],
+                ].map(([label, value, tone]) => (
+                  <div key={label} className="rounded-lg bg-black/24 p-2">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-500">{label}</div>
+                    <div className={`mt-1 font-mono text-sm tracking-[-0.03em] ${tone}`}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-[11px] leading-5 text-slate-400">
+                These drivers explain why OracleX is pricing this market {probabilityDifference.toFixed(1)} points above the public market.
+              </p>
+            </div>
+
+            {probabilityDriverRows.map((driver) => {
+              const isPositive = driver.impact >= 0;
+              const impactLabel = `${isPositive ? "+" : ""}${driver.impact.toFixed(1)} pts`;
+              const barWidth = `${Math.min(Math.abs(driver.impact) / 4, 1) * 100}%`;
+
+              return (
+              <div key={driver.name} className="rounded-xl border border-white/[0.075] bg-black/28 p-3">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold leading-5 text-slate-100">{driver.name}</div>
+                    <div className="mt-1 text-[11px] leading-5 text-slate-400">{driver.evidence}</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className={`font-mono text-sm tracking-[-0.03em] ${isPositive ? "text-emerald-200" : "text-red-200"}`}>{impactLabel}</div>
+                    <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-slate-500">Impact</div>
+                  </div>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-200" style={{ width: `${value}%` }} />
+                  <div className={`h-full rounded-full ${isPositive ? "bg-gradient-to-r from-emerald-400 to-blue-200" : "bg-gradient-to-r from-red-400 to-amber-200"}`} style={{ width: barWidth }} />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-[11px] leading-4 text-slate-400">{isPositive ? "Raises OracleX probability versus market pricing." : "Limits OracleX probability premium."}</span>
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-blue-100">
+                    {driver.strength}
+                    <span className="ml-1 text-slate-600">S{driver.score}</span>
+                  </span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Panel>
       </aside>

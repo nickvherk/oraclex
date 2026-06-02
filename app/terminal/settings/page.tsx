@@ -33,7 +33,7 @@ const billingPlans: BillingPlan[] = [
     price: "$24/month",
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
-    description: "Real-time prediction market analytics, narrative intelligence, and advanced filters.",
+    description: "Real-time prediction market analytics, market events, and advanced filters.",
   },
   {
     plan: "operator",
@@ -48,7 +48,7 @@ const billingPlans: BillingPlan[] = [
     name: "Enterprise",
     price: "Custom",
     amountUsd: 0,
-    description: "APIs, webhooks, enterprise feeds, and institutional data streams.",
+    description: "Access to the upcoming Narrative Discovery Engine featuring evidence-backed theme detection, news intelligence, wallet confirmation, and market impact analysis.",
   },
 ];
 
@@ -56,7 +56,7 @@ const accessRows: { module: string; plans: Plan[] }[] = [
   { module: "Live Feed", plans: ["observer", "analyst", "operator", "enterprise"] },
   { module: "Market Events", plans: ["observer", "analyst", "operator", "enterprise"] },
   { module: "Prediction Market Analytics", plans: ["observer", "analyst", "operator", "enterprise"] },
-  { module: "Narrative Intelligence", plans: ["observer", "analyst", "operator", "enterprise"] },
+  { module: "Narrative Intelligence", plans: ["enterprise"] },
   { module: "Signal Monitor", plans: ["operator", "enterprise"] },
   { module: "Hyperliquid Flows", plans: ["operator", "enterprise"] },
   { module: "APIs", plans: ["enterprise"] },

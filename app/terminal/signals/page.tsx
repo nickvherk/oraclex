@@ -170,33 +170,71 @@ const attentionEvents = [
 ].sort((a, b) => priorityRank[b.severity] - priorityRank[a.severity] || b.supportingSignals - a.supportingSignals || b.historicalMatches - a.historicalMatches);
 
 const categories = ["wallets", "liquidity", "narratives", "consensus", "volatility", "macro"];
-const categoryDetails: Record<string, { label: string; explanation: string }> = {
+const categoryDetails: Record<string, { label: string; explanation: string; source: string; updates: string; feedSummary: string }> = {
   wallets: {
     label: "Smart Money Events",
-    explanation: "Wallet clusters, whale positioning, and market-moving account behavior.",
+    explanation: "Tracks linked wallet clusters and directional exposure changes.",
+    source: "wallet flow",
+    updates: "live",
+    feedSummary: "Wallet-driven events ranked by exposure size, clustering, and market impact.",
   },
   liquidity: {
     label: "Liquidity Anomalies",
-    explanation: "Depth shifts, open interest changes, execution anomalies, and order-book stress.",
+    explanation: "Tracks depth imbalance, order book stress, and execution pressure.",
+    source: "market depth",
+    updates: "live",
+    feedSummary: "Liquidity-driven events ranked by depth imbalance, execution pressure, and abnormal market structure.",
   },
   narratives: {
     label: "Narrative Expansions",
-    explanation: "Attention spikes moving from discussion into tradeable prediction-market effects.",
+    explanation: "Tracks narratives accelerating faster than market pricing.",
+    source: "narrative monitoring",
+    updates: "hourly/live",
+    feedSummary: "Narrative-driven events ranked by acceleration, account quality, and related-market response.",
   },
   consensus: {
     label: "Pricing Divergences",
-    explanation: "Disagreement between OracleX intelligence, public pricing, and related markets.",
+    explanation: "Tracks gaps between OracleX probability and public market pricing.",
+    source: "probability model",
+    updates: "live",
+    feedSummary: "Pricing gaps ranked by OracleX/public spread, confirmation strength, and liquidity conditions.",
   },
   volatility: {
     label: "Risk Events",
-    explanation: "Unusual probability swings, unstable spreads, and unconfirmed volatility.",
+    explanation: "Tracks volatility, source conflict, macro stress, and failed confirmation risk.",
+    source: "signal engine",
+    updates: "live",
+    feedSummary: "Risk events ranked by volatility, source conflict, liquidity stress, and failed-confirmation probability.",
   },
   macro: {
     label: "Macro Repricing",
-    explanation: "Rates, CPI, policy, and macro catalysts affecting probability surfaces.",
+    explanation: "Tracks CPI, Fed, rates, geopolitical, and liquidity-driven probability shifts.",
+    source: "event monitor",
+    updates: "event-driven",
+    feedSummary: "Macro events ranked by catalyst timing, cross-market sensitivity, and probability reaction speed.",
   },
 };
 const selected = attentionEvents[0];
+
+const metricTooltips: Record<string, string> = {
+  "Active Opportunities": "Market setups where OracleX detects positive expected movement based on smart money activity, pricing divergence, narrative expansion, or liquidity support.",
+  "High Risk Events": "Signals that may create downside, volatility, failed resolution, liquidity stress, or sharp probability repricing.",
+  "Divergence Events": "Markets where OracleX intelligence differs meaningfully from public market pricing.",
+  "Average Impact Horizon": "Estimated time window in which current active events may affect market probabilities. This is derived from event type, historical reaction speed, and signal lifecycle.",
+};
+
+function InfoTooltip({ label, children, align = "right", width = "w-72" }: { label: string; children: React.ReactNode; align?: "left" | "right"; width?: string }) {
+  return (
+    <span className="group/tooltip relative z-[80] inline-flex">
+      <button type="button" aria-label={label} className="grid size-5 cursor-help place-items-center rounded-full border border-blue-300/20 bg-blue-300/[0.07] text-blue-100 transition hover:border-blue-300/45 hover:bg-blue-300/[0.13]">
+        <Info className="size-3" />
+      </button>
+      <span className={`pointer-events-none absolute top-7 z-[200] ${align === "left" ? "left-0" : "right-0"} ${width} max-w-[calc(100vw-2rem)] rounded-xl border border-blue-300/20 bg-[#050914]/98 p-3 text-left text-[11px] leading-5 text-slate-300 opacity-0 shadow-[0_18px_60px_rgba(0,0,0,0.6)] ring-1 ring-blue-300/[0.06] transition duration-200 group-hover/tooltip:opacity-100`}>
+        {children}
+      </span>
+    </span>
+  );
+}
 
 function categoryIcon(category: string) {
   if (category === "wallets") return Wallet;
@@ -242,6 +280,7 @@ function SignalsWorkspace() {
   }));
   const filteredEvents = selectedCategory ? attentionEvents.filter((event) => event.category === selectedCategory) : attentionEvents;
   const selectedCategoryLabel = selectedCategory ? categoryDetails[selectedCategory].label : null;
+  const selectedCategorySummary = selectedCategory ? categoryDetails[selectedCategory].feedSummary : "All active events ranked by severity, supporting signal count, and historical similarity.";
   const highRiskEvents = attentionEvents.filter((event) => event.severity === "Critical").length;
   const divergenceEvents = attentionEvents.filter((event) => event.category === "consensus" || event.title.includes("Divergence")).length;
 
@@ -259,14 +298,19 @@ function SignalsWorkspace() {
             ["Active Opportunities", `${attentionEvents.filter((event) => event.severity !== "Elevated").length}`, "actionable setups", AlertOctagon],
             ["High Risk Events", `${highRiskEvents}`, "requires review", ShieldAlert],
             ["Divergence Events", `${divergenceEvents}`, "pricing mismatch", BellRing],
-            ["Average Impact Horizon", "2-8h", "expected window", Zap],
+            ["Average Impact Horizon", "2-8h", "estimated probability impact window", Zap],
           ].map(([label, value, detail, Icon], index) => (
             <motion.div key={label as string} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
-              <Panel>
+              <Panel className="overflow-visible">
                 <CardContent className="p-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label as string}</span>
-                    <Icon className="size-4 text-blue-200" />
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label as string}</span>
+                      <InfoTooltip label={`Explain ${label as string}`} align={index === 0 ? "left" : "right"}>
+                        {metricTooltips[label as string]}
+                      </InfoTooltip>
+                    </span>
+                    <Icon className="size-4 shrink-0 text-blue-200" />
                   </div>
                   <div className="font-mono text-3xl tracking-[-0.05em]">{value as string}</div>
                   <div className="mt-2 text-xs text-blue-200">{detail as string}</div>
@@ -277,25 +321,22 @@ function SignalsWorkspace() {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-          <Panel>
-            <CardHeader className="border-b border-white/[0.075] px-4 py-3">
+          <Panel className="overflow-visible">
+            <CardHeader className="overflow-visible border-b border-white/[0.075] px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <CardTitle className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-300">Attention Categories</CardTitle>
-                    <span className="group/category-info relative inline-flex">
-                      <Info className="size-3.5 cursor-help text-slate-500 transition group-hover/category-info:text-blue-100" />
-                      <span className="pointer-events-none absolute left-0 top-6 z-30 w-64 rounded-xl border border-blue-300/20 bg-[#050914]/98 p-3 text-xs leading-5 text-slate-300 opacity-0 shadow-[0_18px_60px_rgba(0,0,0,0.45)] ring-1 ring-blue-300/[0.06] transition group-hover/category-info:opacity-100">
-                        Attention categories group events by the reason they deserve operator review.
-                      </span>
-                    </span>
+                    <InfoTooltip label="Explain Attention Categories" align="left" width="w-80">
+                      Signal groups ranked by current market relevance. Selecting a category filters the feed to the most important active events.
+                    </InfoTooltip>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">Active event groups currently influencing monitored markets.</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">Signal groups ranked by current market relevance. Selecting a category filters the feed to the most important active events.</p>
                 </div>
                 <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-blue-200">Live</span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-2 p-4">
+            <CardContent className="space-y-2 overflow-visible p-4">
               {categoryCounts.map(({ category, count }) => {
                 const active = selectedCategory === category;
                 const detail = categoryDetails[category];
@@ -305,29 +346,48 @@ function SignalsWorkspace() {
                     key={category}
                     type="button"
                     onClick={() => setSelectedCategory((current) => (current === category ? null : category))}
-                    className={`group/category relative flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs transition ${active ? "border-blue-300/35 bg-blue-300/[0.09] text-blue-50 shadow-[0_0_24px_rgba(59,130,246,0.12)]" : "border-white/[0.065] bg-white/[0.025] text-slate-300 hover:border-blue-300/20 hover:bg-blue-300/[0.045]"}`}
+                    className={`group/category relative w-full cursor-pointer rounded-lg border px-3 py-3 text-left text-xs transition ${active ? "border-blue-300/35 bg-blue-300/[0.09] text-blue-50 shadow-[0_0_24px_rgba(59,130,246,0.12)]" : "border-white/[0.065] bg-white/[0.025] text-slate-300 hover:border-blue-300/20 hover:bg-blue-300/[0.045]"}`}
                     aria-pressed={active}
                   >
-                    <span className="min-w-0">
-                      <span className="block font-medium leading-4">{detail.label}</span>
-                      <span className={`mt-1 block font-mono text-[10px] uppercase tracking-[0.12em] ${active ? "text-blue-100" : "text-slate-600"}`}>Filter feed</span>
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="block font-medium leading-4 text-slate-100">{detail.label}</span>
+                        <span className="mt-2 block text-[11px] leading-4 text-slate-400">{detail.explanation}</span>
+                      </span>
+                      <span className="shrink-0 text-right font-mono text-blue-200">
+                        <span className="block text-sm">{count}</span>
+                        <span className="block text-[9px] uppercase tracking-[0.12em]">Active</span>
+                      </span>
                     </span>
-                    <span className="shrink-0 text-right font-mono text-blue-200">
-                      <span className="block text-sm">{count}</span>
-                      <span className="block text-[9px] uppercase tracking-[0.12em]">Active</span>
-                    </span>
-                    <span className="pointer-events-none absolute left-full top-1/2 z-30 ml-2 hidden w-64 -translate-y-1/2 rounded-xl border border-blue-300/20 bg-[#050914]/98 p-3 text-xs leading-5 text-slate-300 opacity-0 shadow-[0_18px_60px_rgba(0,0,0,0.45)] ring-1 ring-blue-300/[0.06] transition group-hover/category:block group-hover/category:opacity-100 xl:block">
-                      {detail.explanation}
+                    <span className="mt-3 grid grid-cols-2 gap-2">
+                      {[
+                        ["Source", detail.source],
+                        ["Updates", detail.updates],
+                      ].map(([label, value]) => (
+                        <span key={label} className="rounded-md border border-white/[0.06] bg-black/24 px-2 py-1.5">
+                          <span className={`block font-mono text-[8px] uppercase tracking-[0.12em] ${active ? "text-blue-100" : "text-slate-600"}`}>{label}</span>
+                          <span className="mt-0.5 block text-[10px] leading-3 text-slate-300">{value}</span>
+                        </span>
+                      ))}
                     </span>
                   </button>
                 );
               })}
+              <div className="rounded-lg border border-blue-300/12 bg-blue-300/[0.04] px-3 py-2 text-[11px] leading-5 text-slate-400">
+                Active counts represent currently open events that pass OracleX relevance thresholds. Events decay or resolve when supporting data weakens.
+              </div>
+              <div className="px-1 text-[11px] leading-5 text-slate-500">
+                Updated continuously from wallet flow, market pricing, liquidity, narrative, and macro inputs.
+              </div>
             </CardContent>
           </Panel>
 
           <Panel>
-            <PanelHeader title="Attention Feed" action={selectedCategoryLabel ?? "Priority sorted"} />
+            <PanelHeader title={selectedCategoryLabel ?? "Attention Feed"} action={selectedCategory ? "Filtered" : "Priority sorted"} />
             <CardContent className="space-y-3 p-4">
+              <div className="rounded-xl border border-blue-300/12 bg-blue-300/[0.04] px-3 py-2 text-xs leading-5 text-slate-400">
+                {selectedCategorySummary}
+              </div>
               {filteredEvents.map((event, index) => {
                 const Icon = categoryIcon(event.category);
                 return (

@@ -71,7 +71,7 @@ const featureAccess: Record<Feature, Plan[]> = {
   terminal: ["observer", "analyst", "operator", "enterprise"],
   liveFeed: ["observer", "analyst", "operator", "enterprise"],
   marketEvents: ["observer", "analyst", "operator", "enterprise"],
-  narrativeIntelligence: ["observer", "analyst", "operator", "enterprise"],
+  narrativeIntelligence: ["enterprise"],
   walletIntelligence: ["observer", "analyst", "operator", "enterprise"],
   narrativeWatch: ["observer", "analyst", "operator", "enterprise"],
   consensusEngine: ["analyst", "operator", "enterprise"],

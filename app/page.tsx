@@ -99,7 +99,7 @@ const pipelineSteps = [
     title: "Agent arbitration layer",
     metric: "8.4s",
     metricLabel: "intelligence latency",
-    items: ["24/7 narrative intelligence", "87.4 confirmation score", "9 active model families", "0.92 signal confidence"],
+    items: ["Enterprise theme detection", "Evidence-backed reports", "9 active model families", "0.92 signal confidence"],
     Icon: BrainCircuit,
   },
   {
@@ -142,7 +142,7 @@ const standardPlans = [
     amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
     description: "Entry-level access to OracleX intelligence systems.",
-    features: ["Delayed intelligence feed", "Event intelligence previews", "Basic prediction market tracking", "Limited narrative intelligence", "Community access", "Basic confirmation signals"],
+    features: ["Delayed intelligence feed", "Event intelligence previews", "Basic prediction market tracking", "Community access", "Basic confirmation signals"],
   },
   {
     plan: "analyst" as Plan,
@@ -151,7 +151,7 @@ const standardPlans = [
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
     description: "Advanced intelligence access for active prediction traders.",
-    features: ["Real-time intelligence feed", "Market Events", "Prediction market analytics", "Narrative tracking", "Narrative intelligence access", "Advanced filtering", "Smart money signals"],
+    features: ["Real-time intelligence feed", "Market Events", "Prediction market analytics", "Advanced filtering", "Smart money signals"],
     popular: true,
   },
   {
@@ -168,13 +168,13 @@ const standardPlans = [
     name: "Enterprise",
     price: "Custom",
     amountUsd: 0,
-    description: "Institutional prediction intelligence infrastructure.",
-    features: ["Intelligence APIs", "Market Events", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations", "Institutional infrastructure access"],
+    description: "Access to the upcoming Narrative Discovery Engine featuring evidence-backed theme detection, news intelligence, wallet confirmation, and market impact analysis.",
+    features: ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Wallet confirmation", "Market impact analysis", "Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations"],
     enterprise: true,
   },
 ];
 
-const enterpriseAccess = ["Intelligence APIs", "Narrative intelligence feeds", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
+const enterpriseAccess = ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Wallet confirmation", "Market impact analysis", "Intelligence APIs", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
 
 type HomepagePricingPlan = Extract<Plan, "observer" | "analyst" | "operator">;
 
@@ -411,7 +411,7 @@ function NarrativeIntelligenceSection() {
     <section id="narrative-intelligence" className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-32">
       <motion.div {...fadeUp} className="mb-12 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
         <div className="max-w-2xl">
-          <Label>AI Narrative Intelligence</Label>
+          <Label>Enterprise Narrative Discovery</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">AI agents competing to predict the future.</h2>
         </div>
         <div className="min-w-72 rounded-2xl border border-blue-300/20 bg-blue-300/[0.055] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
@@ -524,7 +524,7 @@ function Infrastructure() {
         <motion.div {...fadeUp}>
           <Label>B2B Infrastructure</Label>
           <h2 className="text-4xl font-medium leading-[1] tracking-[-0.035em] text-white sm:text-6xl">Enterprise & B2B Intelligence Infrastructure</h2>
-          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX delivers real-time prediction intelligence APIs and narrative intelligence infrastructure for next-generation market platforms.</p>
+          <p className="mt-7 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX delivers real-time prediction intelligence APIs and upcoming enterprise narrative discovery infrastructure for next-generation market platforms.</p>
         </motion.div>
         <motion.div {...fadeUp} className="grid gap-4 sm:grid-cols-2">
           {infrastructure.map((item, index) => {
@@ -957,7 +957,7 @@ export default function Home() {
           <Label>Chainlink for prediction intelligence</Label>
           <h1 className="max-w-4xl text-6xl font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:text-8xl lg:text-[6.5rem]">Prediction markets need intelligence.</h1>
           <p className="mt-8 max-w-xl text-[17px] leading-8 text-slate-300/90">OracleX is the intelligence infrastructure layer powering next-generation prediction markets on Solana.</p>
-          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Live signals, narrative intelligence, prediction market analytics, and enterprise APIs for operational market teams.</p>
+          <p className="mt-6 max-w-xl text-sm font-medium leading-6 tracking-[0.01em] text-blue-100/90">Live signals, prediction market analytics, enterprise APIs, and upcoming evidence-backed theme discovery for operational market teams.</p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <PrimaryButton onClick={openTerminalLogin}>Enter Terminal</PrimaryButton>
             <SecondaryButton>Read Docs</SecondaryButton>

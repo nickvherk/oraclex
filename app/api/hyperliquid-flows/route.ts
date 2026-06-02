@@ -1,6 +1,6 @@
 import { fetchMetaAndAssetCtxs } from "@/lib/integrations/hyperliquid";
 
-const TRACKED_ASSETS = ["BTC", "ETH", "SOL", "HYPE"] as const;
+const TRACKED_ASSETS = ["BTC", "ETH", "SOL", "HYPE", "DOGE", "XRP", "BNB", "FARTCOIN"] as const;
 
 type TrackedAsset = (typeof TRACKED_ASSETS)[number];
 
@@ -195,7 +195,7 @@ function normalizeAssetFlow(asset: TrackedAsset, universeAsset: HyperliquidUnive
       fundingRate === null ? "Funding unavailable" : `Funding ${(fundingRate * 100).toFixed(4)}%`,
       `Daily price change ${signedPct(dailyPriceChange)}`,
     ],
-    historicalComparison: `${asset} volume intensity and open-interest pressure are normalized against the tracked BTC, ETH, SOL, and HYPE set from Hyperliquid's live market context.`,
+    historicalComparison: `${asset} volume intensity and open-interest pressure are normalized against the tracked Hyperliquid asset universe from live market context.`,
     aiExplanation: `${asset} shows ${signedPct(dailyPriceChange)} daily price change, ${formatUsd(volume24h)} in 24h volume, and ${formatUsd(openInterestUsd)} open interest. OracleX classifies this as ${getInterpretation(flowBias, flowType).toLowerCase()}.`,
     hyperliquid: {
       markPrice,
@@ -240,12 +240,16 @@ function getInterpretation(flowBias: "Bullish" | "Bearish" | "Neutral", flowType
 }
 
 function getRelatedMarkets(asset: TrackedAsset) {
-  const markets: Record<TrackedAsset, string[]> = {
-    BTC: ["BTC ATH Probability", "Bitcoin Weekly Close", "ETF inflow continuation"],
-    ETH: ["ETH Ecosystem Rotation", "ETH ETF relative inflows", "ETH/BTC underperformance"],
-    SOL: ["SOL ETF Approval", "SOL ecosystem TVL", "L1 rotation"],
-    HYPE: ["AI Agent Market Share", "HYPE ecosystem revenue", "On-chain trading infra"],
-  };
+	  const markets: Record<TrackedAsset, string[]> = {
+	    BTC: ["BTC ATH Probability", "Bitcoin Weekly Close", "ETF inflow continuation"],
+	    ETH: ["ETH Ecosystem Rotation", "ETH ETF relative inflows", "ETH/BTC underperformance"],
+	    SOL: ["SOL ETF Approval", "SOL ecosystem TVL", "L1 rotation"],
+	    HYPE: ["AI Agent Market Share", "HYPE ecosystem revenue", "On-chain trading infra"],
+	    DOGE: ["DOGE ETF speculation", "Meme rotation", "Retail risk appetite"],
+	    XRP: ["XRP ETF odds", "SEC settlement outcomes", "Payment-token rotation"],
+	    BNB: ["Exchange token regulation", "BNB chain activity", "CEX market share"],
+	    FARTCOIN: ["Meme coin momentum", "Retail rotation", "High-beta crypto baskets"],
+	  };
 
   return markets[asset];
 }

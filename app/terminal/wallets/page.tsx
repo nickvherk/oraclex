@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, BrainCircuit, Check, ChevronDown, Copy, Lock, Network, Search, ShieldCheck, SlidersHorizontal, Wallet, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Lock, Network, Search, SlidersHorizontal, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 import { FeatureGate, PremiumLockedOverlay } from "@/components/terminal/access-gate";
 import { useCurrentPlan } from "@/lib/access-control";
+import { walletProfilePath } from "@/lib/wallet-profile-data";
 
 const TRACKED_WALLET_UNIVERSE = 12480;
 const SMART_MONEY_WALLETS = 1250;
@@ -77,6 +79,23 @@ type WalletIntelligencePayload = {
   questionExamples: typeof questionExamples;
 };
 
+type SmartMoneyConsensus = {
+  market: string;
+  cohort: string;
+  alignedPercent: string;
+  side: "YES" | "NO";
+  netExposure: string;
+  timeframe: string;
+  direction: string;
+  evidenceStrength: "High" | "Medium";
+  alignedWallets: string;
+  category: Exclude<Category, "All">;
+  group: WalletGroup;
+  topWalletTags: string[];
+  why: string;
+};
+
+// TODO: Future integration: connect PolymarketAnalytics API / wallet positions API.
 const wallets: WalletRecord[] = [
   {
     rank: 3,
@@ -339,6 +358,54 @@ const consensusInsights = [
   { segment: "Top Macro Wallets", wallets: 76, volume: 33700000, exposure: "53% cuts / 47% no cuts", timeframe: "7D", confidence: 73, insight: "Macro specialists remain near balanced, with only a 6-point tilt toward rate-cut outcomes." },
 ];
 
+const smartMoneyConsensus: SmartMoneyConsensus[] = [
+  {
+    market: "Lakers Win Tonight",
+    cohort: "Top 20 Sports Wallets",
+    alignedPercent: "60%",
+    side: "YES",
+    netExposure: "$6.8M net adds",
+    timeframe: "24h",
+    direction: "Lakers YES",
+    evidenceStrength: "High",
+    alignedWallets: "12 wallets aligned",
+    category: "Sports",
+    group: "Top 20",
+    topWalletTags: ["SPORTS-MM-08", "SPORTS-LATE-87", "NBA-INJURY-14"],
+    why: "60% of tracked top sports wallets are positioned on Lakers YES for tonight's game, with $6.8M net exposure added over the last 24h.",
+  },
+  {
+    market: "SOL ETF Approval",
+    cohort: "Top 50 Crypto Wallets",
+    alignedPercent: "64%",
+    side: "YES",
+    netExposure: "$3.8M net adds",
+    timeframe: "6h",
+    direction: "SOL ETF YES",
+    evidenceStrength: "High",
+    alignedWallets: "14 wallets aligned",
+    category: "Crypto",
+    group: "Top 50",
+    topWalletTags: ["CRYPTO-INST-12", "CRYPTO-SOL-142", "SOL-ETF-09"],
+    why: "Top crypto wallets are adding YES exposure faster than public market probability has adjusted, led by SOL ETF specialists and crypto adoption wallets.",
+  },
+  {
+    market: "Fed Cuts Next Meeting",
+    cohort: "Top 100 Macro Wallets",
+    alignedPercent: "53%",
+    side: "YES",
+    netExposure: "$2.1M net adds",
+    timeframe: "7d",
+    direction: "Fed cuts YES",
+    evidenceStrength: "Medium",
+    alignedWallets: "31 wallets aligned",
+    category: "Macro",
+    group: "Top 100",
+    topWalletTags: ["MACRO-HEDGE-18", "RATES-CUT-44", "CPI-DESK-12"],
+    why: "Macro specialists are only modestly tilted toward cuts, so OracleX treats this as a directional lean rather than a high-conviction consensus.",
+  },
+];
+
 const clusters = [
   { title: "Top 50 geopolitics wallets pricing peace", wallets: 50, volume: 54700000, confidence: 88, impact: "High", divergence: "71 Flow Divergence Index™", severity: "critical", detail: "Ceasefire-linked wallets added $8.4M net YES exposure over 7D while public odds moved only +3.1 points." },
   { title: "Top 20 sports wallets active before games", wallets: 20, volume: 38200000, confidence: 82, impact: "Medium", divergence: "64% YES exposure", severity: "high", detail: "Sports specialists increased NBA YES exposure by $6.8M over 24H with 840 active wallets in the selected universe." },
@@ -370,6 +437,28 @@ function metricTone(value: number) {
   if (value >= 85) return "text-blue-100";
   if (value >= 70) return "text-emerald-200";
   return "text-slate-300";
+}
+
+function totalPnl(wallet: WalletRecord) {
+  return Math.round(wallet.volume * (wallet.roi / 100));
+}
+
+function consensusLeadWallet(pageWallets: WalletRecord[], item: SmartMoneyConsensus) {
+  const categoryWallets = pageWallets.filter((wallet) => wallet.category === item.category).sort((a, b) => a.rank - b.rank);
+  const taggedWallet = categoryWallets.find((wallet) => item.topWalletTags.includes(wallet.tag));
+  if (taggedWallet) return taggedWallet;
+  if (item.market === "SOL ETF Approval") return categoryWallets.find((wallet) => wallet.tag === "CRYPTO-INST-12") ?? categoryWallets[0];
+  if (item.market === "Fed Cuts Next Meeting") return categoryWallets.find((wallet) => wallet.tag === "MACRO-HEDGE-18") ?? categoryWallets[0];
+  if (item.market === "Lakers Win Tonight") return categoryWallets.find((wallet) => wallet.tag === "SPORTS-MM-08") ?? categoryWallets[0];
+  return categoryWallets[0] ?? pageWallets[0];
+}
+
+function consensusPositionPreview(wallet: WalletRecord, item: SmartMoneyConsensus | null) {
+  if (!item) return wallet.lastPosition;
+  if (item.market === "Lakers Win Tonight") return wallet.tag === "SPORTS-MM-08" ? "+$340K YES Lakers win tonight at 61c" : "+$280K YES Lakers injury-news basket at 49c";
+  if (item.market === "SOL ETF Approval") return wallet.tag === "CRYPTO-INST-12" ? "+$540K YES SOL ETF at 62c" : "+$480K YES SOL ETF at 60c";
+  if (item.market === "Fed Cuts Next Meeting") return "+$240K YES Fed cuts next meeting at 38c";
+  return wallet.lastPosition;
 }
 
 function SelectControl<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: readonly T[]; onChange: (next: T) => void }) {
@@ -534,6 +623,7 @@ function ObserverWalletIntelligence({ walletData }: { walletData: ReturnType<typ
 }
 
 function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typeof useWalletIntelligenceData> }) {
+  const router = useRouter();
   const [group, setGroup] = useState<WalletGroup>("Top 50");
   const [category, setCategory] = useState<Category>("All");
   const [bias, setBias] = useState<Bias>("All");
@@ -550,10 +640,7 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
   const [minActivePositions, setMinActivePositions] = useState(1);
   const [query, setQuery] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [selectedWalletAddress, setSelectedWalletAddress] = useState(walletData.wallets[0].wallet);
-  const [copied, setCopied] = useState(false);
   const pageWallets = walletData.wallets.length ? walletData.wallets : wallets;
-  const selectedWallet = pageWallets.find((wallet) => wallet.wallet === selectedWalletAddress) ?? pageWallets[0];
 
   const sortKey: SortKey = sort === "ROI" ? "roi" : sort === "Win Rate" ? "winRate" : sort === "Volume" ? "volume" : sort === "Early Signal" ? "earlySignal" : sort === "Divergence" ? "divergence" : "conviction";
   const positionThreshold = positionSize === "$1M+" ? 1000000 : positionSize === "$500K+" ? 500000 : positionSize === "$250K+" ? 250000 : positionSize === "$100K+" ? 100000 : 0;
@@ -615,21 +702,25 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
     setQuery("");
   }
 
-  function copyWallet() {
-    void navigator.clipboard.writeText(selectedWallet.wallet);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
+  function openWalletProfile(wallet: string) {
+    router.push(walletProfilePath(wallet));
+  }
+
+  function viewConsensusWallets(item: SmartMoneyConsensus) {
+    const leadWallet = consensusLeadWallet(pageWallets, item);
+    if (leadWallet) openWalletProfile(leadWallet.wallet);
   }
 
   return (
-    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-4">
       <div className="grid min-w-0 gap-4">
         <section className="rounded-xl border border-white/[0.075] bg-[#070b14]/86 p-4">
           <div className="mb-4 flex flex-col gap-3 border-b border-white/[0.075] pb-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Prediction market analytics system</Badge>
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">What are the best prediction market wallets doing right now?</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX tracks a large universe of top Polymarket wallets, category specialists, smart money clusters, and repeat winners to turn wallet behavior into data-backed intelligence.</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX tracks top Polymarket traders, open positions, recent changes, wallet alignment, and market exposure to surface actionable smart-money behavior.</p>
+              <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: Polymarket wallet analytics placeholder</div>
             </div>
             <div className="grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
               <span>{walletData.stats.trackedWalletUniverse.toLocaleString()} wallets</span>
@@ -711,36 +802,39 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
         </Panel>
 
         <Panel>
-          <PanelHeader title="Smart Money Wallet Table" action={`showing 1-${Math.min(50, displayedWallets.length)} of ${walletData.stats.trackedWalletUniverse.toLocaleString()} wallets`} />
+          <PanelHeader title="Trader Intelligence" action={`showing 1-${Math.min(50, displayedWallets.length)} of ${walletData.stats.trackedWalletUniverse.toLocaleString()} wallets`} />
+          <div className="border-b border-white/[0.075] px-4 py-3 text-xs text-slate-400">
+            Click any wallet row or wallet address to open a full Wallet Profile with positions, evidence, related wallets, and historical performance.
+          </div>
           <CardContent className="overflow-x-auto p-0">
-            <table className="w-full min-w-[1320px] text-left text-xs">
+            <table className="w-full min-w-[1420px] text-left text-xs">
               <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
                 <tr>
-                  {["Wallet", "Category Universe", "ROI", "Win Rate", "Tracked Volume", "Current Bias", "Conviction Score™", "Early Signal Score™", "Active Positions", "Last Position", "Flow Divergence Index™", "Last Active"].map((header) => (
+                  {["Wallet", "Total PnL", "ROI", "Win Rate", "Active Positions", "Largest Position", "Recent Position Change", "Market Category", "Conviction Score", "Last Activity"].map((header) => (
                     <th key={header} className="px-4 py-3 font-medium">{header}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {displayedWallets.map((wallet) => (
-                  <tr key={wallet.wallet} onClick={() => setSelectedWalletAddress(wallet.wallet)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${selectedWallet.wallet === wallet.wallet ? "bg-blue-300/[0.06]" : ""}`}>
+                  <tr key={wallet.wallet} onClick={() => openWalletProfile(wallet.wallet)} className="cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035]">
                     <td className="px-4 py-3">
-                      <div className="font-mono text-blue-100">{shortWallet(wallet.wallet)}</div>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); openWalletProfile(wallet.wallet); }} className="font-mono text-blue-100 underline-offset-4 hover:underline">
+                        {shortWallet(wallet.wallet)}
+                      </button>
                       <div className="mt-1 font-mono text-[10px] text-slate-600">{wallet.tag}</div>
                     </td>
+                    <td className="px-4 py-3 font-mono text-emerald-200">{money(totalPnl(wallet))}</td>
+                    <td className="px-4 py-3 font-mono text-emerald-200">{wallet.roi.toFixed(1)}%</td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{wallet.winRate}%</td>
+                    <td className="px-4 py-3 font-mono text-slate-300">{wallet.activeMarkets}</td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{money(wallet.positionSize)}</td>
+                    <td className="max-w-[300px] truncate px-4 py-3 font-mono text-[11px] text-slate-300">{consensusPositionPreview(wallet, null)}</td>
                     <td className="px-4 py-3 text-slate-300">
                       <div>{wallet.category}</div>
                       <div className="mt-1 font-mono text-[10px] text-slate-600">{wallet.group}</div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-emerald-200">{wallet.roi.toFixed(1)}%</td>
-                    <td className="px-4 py-3 font-mono text-slate-200">{wallet.winRate}%</td>
-                    <td className="px-4 py-3 font-mono text-slate-200">{money(wallet.volume)}</td>
-                    <td className="px-4 py-3"><BiasBadge bias={badgeBias(wallet.bias)} /></td>
                     <td className={`px-4 py-3 font-mono ${metricTone(wallet.conviction)}`}>{wallet.conviction}</td>
-                    <td className={`px-4 py-3 font-mono ${metricTone(wallet.earlySignal)}`}>{wallet.earlySignal}</td>
-                    <td className="px-4 py-3 font-mono text-slate-300">{wallet.activeMarkets}</td>
-                    <td className="max-w-[260px] truncate px-4 py-3 font-mono text-[11px] text-slate-300">{wallet.lastPosition}</td>
-                    <td className="px-4 py-3 font-mono text-blue-100">{wallet.divergence}</td>
                     <td className="px-4 py-3 font-mono text-slate-500">{wallet.lastActive}</td>
                   </tr>
                 ))}
@@ -749,26 +843,39 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.075] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
               <span>Showing 1-{Math.min(50, displayedWallets.length)} of {walletData.stats.trackedWalletUniverse.toLocaleString()} tracked wallets</span>
               <span>Selected filter universe: {walletData.stats.activeWallets.toLocaleString()} active wallets</span>
+              <span>Source: Polymarket wallet analytics placeholder</span>
             </div>
           </CardContent>
         </Panel>
 
         <Panel>
-          <PanelHeader title="Smart Money Consensus" action="Data-backed aggregate signals" />
+          <PanelHeader title="Smart Money Consensus" action="Actionable wallet cohorts" />
           <CardContent className="grid gap-3 p-4 xl:grid-cols-2">
-            {walletData.consensusInsights.map((item) => (
-              <div key={item.segment} className="rounded-xl border border-white/[0.07] bg-black/25 p-4">
+            {smartMoneyConsensus.map((item) => (
+              <div key={item.market} className="rounded-xl border border-white/[0.07] bg-black/25 p-4 transition hover:border-blue-300/20">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-white">{item.segment}</div>
-                  <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{item.confidence}% confidence</Badge>
+                  <div>
+                    <div className="text-sm font-semibold text-white">{item.cohort} — {item.market}</div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: Polymarket wallet analytics placeholder</div>
+                  </div>
+                  <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{item.evidenceStrength} evidence</Badge>
                 </div>
-                <p className="text-xs leading-5 text-slate-300">{item.insight}</p>
+                <p className="text-xs leading-5 text-slate-300">{item.why}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-[10px] md:grid-cols-5">
-                  <span className="rounded bg-white/[0.035] p-2 text-slate-400">{item.wallets} wallets</span>
-                  <span className="rounded bg-white/[0.035] p-2 text-slate-400">{money(item.volume)}</span>
-                  <span className="rounded bg-white/[0.035] p-2 text-slate-400">{item.exposure}</span>
+                  <span className="rounded bg-white/[0.035] p-2 text-blue-100">{item.alignedPercent} {item.side}</span>
+                  <span className="rounded bg-white/[0.035] p-2 text-slate-400">{item.netExposure}</span>
                   <span className="rounded bg-white/[0.035] p-2 text-slate-400">{item.timeframe}</span>
-                  <span className="rounded bg-white/[0.035] p-2 text-blue-100">{item.confidence}% conf</span>
+                  <span className="rounded bg-white/[0.035] p-2 text-slate-400">{item.alignedWallets}</span>
+                  <span className="rounded bg-white/[0.035] p-2 text-blue-100">{item.direction}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.topWalletTags.map((tag) => <Badge key={tag} className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] text-slate-300">{tag}</Badge>)}
+                  </div>
+                  <button type="button" onClick={() => viewConsensusWallets(item)} className="inline-flex min-h-8 items-center justify-center gap-2 rounded-lg border border-blue-300/30 bg-blue-300/[0.08] px-3 py-1.5 text-xs font-semibold text-blue-100 hover:bg-blue-300/[0.13]">
+                    View Wallets
+                    <ArrowRight className="size-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -806,61 +913,6 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
           </Panel>
         </div>
       </div>
-
-      <aside className="grid gap-4 2xl:sticky 2xl:top-5 2xl:self-start">
-        <Panel>
-          <PanelHeader title="Wallet Detail" action={`Rank ${selectedWallet.rank}`} />
-          <CardContent className="p-4">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="font-mono text-sm text-blue-100">{shortWallet(selectedWallet.wallet)}</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{selectedWallet.tag}</Badge>
-                  <Badge className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] text-slate-300">{selectedWallet.category}</Badge>
-                </div>
-              </div>
-              <button type="button" onClick={copyWallet} className="grid size-9 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-slate-300">
-                {copied ? <Check className="size-4 text-emerald-200" /> : <Copy className="size-4" />}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                ["Tracked volume", money(selectedWallet.volume)],
-                ["Win rate", `${selectedWallet.winRate}%`],
-                ["ROI", `${selectedWallet.roi.toFixed(1)}%`],
-                ["Smart Money Concentration™", `${selectedWallet.smartMoneyRating}`],
-                ["Exposure split", selectedWallet.exposure],
-                ["Active positions", `${selectedWallet.activeMarkets}`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
-                  <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
-                  <div className="mt-2 text-xs leading-5 text-slate-200">{value}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 rounded-xl border border-blue-300/15 bg-blue-300/[0.045] p-4">
-              <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-blue-100"><BrainCircuit className="size-4" />AI explanation</div>
-              <p className="text-xs leading-6 text-slate-300">{selectedWallet.interpretation}</p>
-            </div>
-          </CardContent>
-        </Panel>
-
-        <Panel>
-          <PanelHeader title="Evidence Stack" action={selectedWallet.group} />
-          <CardContent className="space-y-4 p-4">
-            <div>
-              <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500"><Wallet className="size-4 text-blue-200" />Recent entries</div>
-              <div className="space-y-2">{selectedWallet.entries.map((item) => <div key={item} className="rounded-lg bg-white/[0.035] px-3 py-2 text-xs text-slate-300">{item}</div>)}</div>
-            </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500"><ShieldCheck className="size-4 text-blue-200" />Active markets</div>
-              <div className="flex flex-wrap gap-2">{selectedWallet.activeMarketsList.map((item) => <Badge key={item} className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] text-slate-300">{item}</Badge>)}</div>
-            </div>
-          </CardContent>
-        </Panel>
-      </aside>
     </div>
   );
 }

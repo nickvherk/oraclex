@@ -40,7 +40,7 @@ const navSections = [
     items: [
       { label: "Live Feed", href: "/terminal", icon: Radio, feature: "liveFeed" },
       { label: "Signal Monitor", href: "/terminal/signals", icon: Activity, feature: "signalMonitor" },
-      { label: "Narrative Intelligence", href: "/terminal/narratives", icon: BrainCircuit, feature: "narrativeIntelligence" },
+      { label: "Narrative Intelligence", href: "/terminal/narratives", icon: BrainCircuit, feature: "narrativeIntelligence", comingSoon: true },
       { label: "Prediction Market Analytics", href: "/terminal/wallets", icon: Wallet, feature: "walletIntelligence" },
       { label: "Hyperliquid Flows", href: "/terminal/flows", icon: Layers, feature: "crossMarketFlows" },
       { label: "Market Events", href: "/terminal/events", icon: CalendarDays, feature: "marketEvents" },
@@ -104,6 +104,7 @@ const marketRouteTitles: Record<string, string> = {
 };
 
 function getRouteTitle(pathname: string) {
+  if (pathname.startsWith("/terminal/prediction-market-analytics/wallet/")) return "Wallet Profile";
   const marketMatch = pathname.match(/^\/terminal\/markets\/([^/]+)$/);
   if (marketMatch) return marketRouteTitles[marketMatch[1]] ?? "Market Workspace";
   return routeTitles[pathname] ?? "OracleX Intelligence Workspace";
@@ -184,12 +185,13 @@ function Sidebar() {
             <div className="mb-2 px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">{section.label}</div>
             <div className="space-y-1">
               {section.items.map((item) => {
-                const active = pathname === item.href;
+                const active = pathname === item.href || (item.href === "/terminal/wallets" && pathname.startsWith("/terminal/prediction-market-analytics/wallet/"));
                 const Icon = item.icon;
                 const comingSoon = "comingSoon" in item && item.comingSoon;
                 const locked = item.href !== "/terminal/settings" && !canAccess(activePlan, item.feature as Feature);
+                const disabledComingSoon = Boolean(comingSoon && (locked || item.href !== "/terminal/narratives"));
 
-                const navClass = `flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${comingSoon ? "cursor-not-allowed border border-white/[0.045] bg-white/[0.018] text-slate-600 opacity-70" : active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : locked ? "text-slate-600 hover:bg-white/[0.02] hover:text-slate-400" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`;
+                const navClass = `flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition ${disabledComingSoon ? "cursor-not-allowed border border-white/[0.045] bg-white/[0.018] text-slate-600 opacity-70" : active ? "border border-blue-300/18 bg-blue-300/[0.075] text-blue-100" : locked ? "text-slate-600 hover:bg-white/[0.02] hover:text-slate-400" : "text-slate-400 hover:bg-white/[0.035] hover:text-slate-100"}`;
 
                 const navContent = (
                   <>
@@ -206,7 +208,7 @@ function Sidebar() {
                   </>
                 );
 
-                return comingSoon ? (
+                return disabledComingSoon ? (
                   <div key={`${section.label}-${item.label}`} aria-disabled="true" className={navClass}>
                     {navContent}
                   </div>
