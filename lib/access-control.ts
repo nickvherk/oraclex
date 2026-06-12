@@ -371,6 +371,7 @@ export function useCurrentSession() {
     const profile = typeof window === "undefined" ? null : readStoredSupabaseProfile();
     return profile ? { email: profile.email, plan: profile.plan, subscriptionStatus: profile.subscriptionStatus, source: "supabase" } : null;
   });
+  const [hasCheckedSupabaseSession, setHasCheckedSupabaseSession] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -381,12 +382,15 @@ export function useCurrentSession() {
       if (!data.session) {
         setSupabaseSession(null);
         clearSupabaseProfile();
+        setHasCheckedSupabaseSession(true);
         return;
       }
       fetchProfileForSession(data.session).then((session) => {
         if (active) setSupabaseSession(session);
       }).catch(() => {
         if (active) setSupabaseSession(fallbackSupabaseSession(data.session));
+      }).finally(() => {
+        if (active) setHasCheckedSupabaseSession(true);
       });
     });
 
@@ -395,12 +399,15 @@ export function useCurrentSession() {
       if (!session) {
         setSupabaseSession(null);
         clearSupabaseProfile();
+        setHasCheckedSupabaseSession(true);
         return;
       }
       fetchProfileForSession(session).then((profileSession) => {
         if (active) setSupabaseSession(profileSession);
       }).catch(() => {
         if (active) setSupabaseSession(fallbackSupabaseSession(session));
+      }).finally(() => {
+        if (active) setHasCheckedSupabaseSession(true);
       });
     });
 
@@ -421,7 +428,9 @@ export function useCurrentSession() {
     }
   }, [raw]);
 
-  return { session: supabaseSession ?? mockSession, hydrated: true };
+  const session = supabaseSession ?? mockSession;
+
+  return { session, hydrated: Boolean(mockSession) || hasCheckedSupabaseSession };
 }
 
 export function getPlanRank(plan: Plan) {

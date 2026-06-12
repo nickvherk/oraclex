@@ -14,12 +14,12 @@ export type WalletProfile = {
   tag: string;
   category: string;
   cohort: string;
-  roi: number;
-  pnl: number;
-  winRate: number;
-  volume: number;
-  openPositions: number;
-  conviction: number;
+  roi: number | null;
+  pnl: number | null;
+  winRate: number | null;
+  volume: number | null;
+  openPositions: number | null;
+  conviction: number | null;
   exposure: string;
   interpretation: string;
   positions: WalletPosition[];
@@ -30,7 +30,8 @@ export type WalletProfile = {
   performance: { label: string; value: string }[];
 };
 
-export function money(value: number) {
+export function money(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
   if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
   return `$${(value / 1000).toFixed(0)}K`;
 }

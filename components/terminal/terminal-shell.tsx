@@ -3,7 +3,6 @@
 import {
   Activity,
   BarChart3,
-  Bell,
   BrainCircuit,
   CalendarDays,
   Cpu,
@@ -15,7 +14,6 @@ import {
   Network,
   Plug,
   Radio,
-  Search,
   Settings,
   Server,
   ShieldCheck,
@@ -31,7 +29,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { LockedAccessScreen } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { canAccess, Feature, formatPlan, logoutOracleX, useCurrentSession } from "@/lib/access-control";
 
 const navSections = [
@@ -71,13 +68,6 @@ const navSections = [
       { label: "Settings", href: "/terminal/settings", icon: Settings, feature: "terminal" },
     ],
   },
-];
-
-const sidebarStats = [
-  ["System health", "99.98%", "text-emerald-200"],
-  ["API status", "Nominal", "text-blue-200"],
-  ["Signal latency", "8.4s", "text-slate-200"],
-  ["Markets scanned", "1,284", "text-slate-200"],
 ];
 
 const routeTitles: Record<string, string> = {
@@ -156,6 +146,22 @@ export function SeverityBadge({ severity }: { severity: string }) {
   return <Badge className={`h-6 rounded-lg border px-2 font-mono text-[10px] uppercase ${tone}`}>{severity}</Badge>;
 }
 
+function OracleXLogoMark({ className = "size-9 rounded-xl" }: { className?: string }) {
+  return (
+    <span className={`relative grid shrink-0 place-items-center overflow-hidden border border-blue-300/25 bg-blue-300/[0.075] text-blue-200 ${className}`}>
+      <Network className="size-5" />
+      <img
+        src="/oraclex-logo.png"
+        alt="OracleX"
+        className="absolute inset-0 size-full object-contain p-1.5"
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
+        }}
+      />
+    </span>
+  );
+}
+
 function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -171,9 +177,7 @@ function Sidebar() {
   return (
     <aside className="hidden h-screen w-[280px] shrink-0 border-r border-white/[0.075] bg-black/55 xl:flex xl:flex-col">
       <Link href="/" className="flex h-[72px] items-center gap-3 border-b border-white/[0.075] px-5">
-        <span className="grid size-9 place-items-center rounded-xl border border-blue-300/25 bg-blue-300/[0.075] text-blue-200">
-          <Network className="size-5" />
-        </span>
+        <OracleXLogoMark />
         <div>
           <div className="text-sm font-semibold tracking-[-0.01em] text-white">OracleX</div>
           <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-slate-500">Intelligence OS</div>
@@ -241,14 +245,6 @@ function Sidebar() {
             <LogOut className="size-4" />
           </button>
         </div>
-        <div className="space-y-2 rounded-xl border border-white/[0.075] bg-white/[0.025] p-3">
-          {sidebarStats.map(([label, value, tone]) => (
-            <div key={label} className="flex items-center justify-between gap-3 text-xs">
-              <span className="text-slate-500">{label}</span>
-              <span className={`font-mono ${tone}`}>{value}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </aside>
   );
@@ -281,9 +277,7 @@ export function TerminalShell({ children }: { children: React.ReactNode }) {
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-[72px] shrink-0 items-center gap-4 border-b border-white/[0.075] bg-black/45 px-4 backdrop-blur-xl lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-xl border border-blue-300/20 bg-blue-300/[0.065] text-blue-200 xl:hidden">
-                <Network className="size-5" />
-              </span>
+              <OracleXLogoMark className="size-9 rounded-xl xl:hidden" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold tracking-[-0.01em]">
                   <Terminal className="size-4 text-blue-200" />
@@ -292,20 +286,9 @@ export function TerminalShell({ children }: { children: React.ReactNode }) {
                 <div className="mt-1 hidden font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500 sm:block">Institutional prediction intelligence terminal</div>
               </div>
             </div>
-            <div className="hidden w-full max-w-md items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.035] px-3 md:flex">
-              <Search className="size-4 text-slate-500" />
-              <Input className="h-10 border-0 bg-transparent px-0 text-sm text-white placeholder:text-slate-600 focus-visible:ring-0" placeholder="Search markets, agents, wallets, narratives" />
-            </div>
-            <div className="hidden items-center gap-2 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-emerald-200 lg:flex">
-              <span className="size-1.5 rounded-full bg-emerald-300" />
-              Engine online
-            </div>
-            <button type="button" className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-slate-300" aria-label="Notifications">
-              <Bell className="size-4" />
-            </button>
-            <button type="button" className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-blue-100" aria-label="Profile">
+            <Link href="/terminal/settings" className="grid size-9 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-blue-100 transition hover:border-blue-300/20 hover:text-white" aria-label="Account settings">
               <User className="size-4" />
-            </button>
+            </Link>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto p-4 lg:p-5">{content}</div>
         </section>

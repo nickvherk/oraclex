@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMockPlan, loginWithSupabase, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
+function getSafeRedirect(fallback: string) {
+  const redirect = new URLSearchParams(window.location.search).get("redirect");
+
+  if (!redirect || !redirect.startsWith("/") || redirect.startsWith("//")) {
+    return fallback;
+  }
+
+  return redirect;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -23,10 +33,11 @@ export default function LoginPage() {
     setError("");
 
     try {
+      const postAuthRedirect = getSafeRedirect(isSignup ? "/terminal/settings?activation=created" : "/terminal");
       const session = isSignup ? await signUpWithSupabase(email, password) : await loginWithSupabase(email, password);
 
       if (session) {
-        router.push(isSignup ? "/terminal/settings?activation=created" : "/terminal");
+        router.push(postAuthRedirect);
         return;
       }
 
@@ -38,7 +49,7 @@ export default function LoginPage() {
 
         if (plan) {
           saveMockSession(email, plan);
-          router.push("/terminal");
+          router.push(getSafeRedirect("/terminal"));
           return;
         }
       }

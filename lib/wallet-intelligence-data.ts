@@ -13,6 +13,8 @@ export type WalletRecord = {
   tag: string;
   category: WalletCategory;
   group: string;
+  pnl?: number | null;
+  pnlSource?: "live" | "derived" | "unavailable";
   roi: number;
   winRate: number;
   volume: number;

@@ -13,7 +13,6 @@ import {
   Globe2,
   Lock,
   Mail,
-  Network,
   RadioTower,
   ScanLine,
   Server,
@@ -23,22 +22,14 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PublicHeader } from "@/components/public-header";
 import { getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
 const DOCS_URL = "https://oracle-x-2.gitbook.io/oraclex-documentation/";
 const X_URL = "https://x.com/oraclexterminal";
-
-const navLinks = [
-  { label: "Narrative Intelligence", href: "#narrative-intelligence" },
-  { label: "Terminal", href: "#terminal" },
-  { label: "Infrastructure", href: "#infrastructure" },
-  { label: "Why OracleX", href: "/why-oraclex" },
-  { label: "Docs", href: DOCS_URL, external: true },
-];
 
 const heroMetrics = [
   ["128", "Markets Scanned"],
@@ -910,9 +901,9 @@ function EnterTerminalModal({ open, onClose, openedFromPricing }: { open: boolea
 export default function Home() {
   const [isTerminalLoginOpen, setIsTerminalLoginOpen] = useState(false);
   const [terminalLoginSource, setTerminalLoginSource] = useState<"terminal" | "pricing">("terminal");
+  const router = useRouter();
   const openTerminalLogin = () => {
-    setTerminalLoginSource("terminal");
-    setIsTerminalLoginOpen(true);
+    router.push("/login?redirect=/terminal");
   };
   const openPricingLogin = (plan: HomepagePricingPlan) => {
     localStorage.setItem("intendedPlan", plan);
@@ -925,32 +916,7 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_18%_12%,rgba(31,111,255,0.18),transparent_28%),radial-gradient(circle_at_86%_6%,rgba(96,165,250,0.08),transparent_26%),linear-gradient(180deg,#02040a_0%,#040814_46%,#02040a_100%)]" />
       <div className="pointer-events-none fixed inset-0 z-0 data-streams opacity-[0.035]" />
 
-      <nav className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.075] bg-black/62 backdrop-blur-xl">
-        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="cursor-pointer flex items-center gap-2.5 text-sm font-semibold tracking-[-0.01em] text-white">
-            <span className="grid size-8 place-items-center rounded-xl border border-blue-300/25 bg-blue-300/[0.055] text-blue-200">
-              <Network className="size-4" />
-            </span>
-            OracleX
-          </Link>
-          <div className="hidden items-center gap-8 text-xs font-medium text-slate-400 md:flex">
-            {navLinks.map((link) =>
-              link.external ? (
-                <a key={link.label} href={link.href} target="_blank" rel="noreferrer" className="cursor-pointer transition duration-300 hover:text-blue-100">
-                  {link.label}
-                </a>
-              ) : (
-                <Link key={link.label} href={link.href} className="cursor-pointer transition duration-300 hover:text-blue-100">
-                  {link.label}
-                </Link>
-              ),
-            )}
-          </div>
-          <button type="button" onClick={openTerminalLogin} className="premium-interactive hidden rounded-xl border border-blue-300/28 bg-blue-300/[0.055] px-4 py-2.5 text-xs font-semibold text-blue-100 sm:inline-flex">
-            Enter Terminal
-          </button>
-        </div>
-      </nav>
+      <PublicHeader />
 
       <section className="relative z-10 mx-auto grid max-w-7xl gap-14 px-4 pb-20 pt-32 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8 lg:pb-28 lg:pt-40">
         <motion.div {...fadeUp}>

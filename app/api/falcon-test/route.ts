@@ -1,4 +1,4 @@
-import { FalconSemanticRetrieveError, falconSemanticRetrieveWithDebug } from "@/lib/integrations/polymarket-analytics";
+import { FalconAnalyticsError, falconSemanticRetrieveWithDebug } from "@/lib/integrations/polymarket-analytics";
 
 const FALCON_TEST_QUERY = "Top Polymarket traders by volume and profitability";
 
@@ -14,7 +14,7 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Falcon semantic retrieve error";
-    const debug = error instanceof FalconSemanticRetrieveError ? error.debug : null;
+    const debug = error instanceof FalconAnalyticsError ? { message } : null;
 
     return Response.json(
       {

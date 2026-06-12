@@ -44,6 +44,8 @@ type WalletRecord = {
   tag: string;
   category: Exclude<Category, "All">;
   group: string;
+  pnl?: number | null;
+  pnlSource?: "live" | "derived" | "unavailable";
   roi: number;
   winRate: number;
   volume: number;
@@ -77,6 +79,15 @@ type WalletIntelligencePayload = {
   consensusInsights: typeof consensusInsights;
   clusters: typeof clusters;
   questionExamples: typeof questionExamples;
+  smartMoneyConsensus?: SmartMoneyConsensus[];
+  sourceStatus?: {
+    source: "live" | "derived" | "fallback" | "unavailable";
+    label: string;
+    liveFields: string[];
+    derivedFields: string[];
+    fallbackFields: string[];
+    unavailableFields: string[];
+  };
 };
 
 type SmartMoneyConsensus = {
@@ -93,6 +104,7 @@ type SmartMoneyConsensus = {
   group: WalletGroup;
   topWalletTags: string[];
   why: string;
+  source?: "live" | "derived" | "fallback" | "unavailable";
 };
 
 // TODO: Future integration: connect PolymarketAnalytics API / wallet positions API.
@@ -440,7 +452,15 @@ function metricTone(value: number) {
 }
 
 function totalPnl(wallet: WalletRecord) {
-  return Math.round(wallet.volume * (wallet.roi / 100));
+  if (typeof wallet.pnl === "number" && Number.isFinite(wallet.pnl)) {
+    return { value: money(wallet.pnl), label: wallet.pnlSource === "live" ? "Live from Falcon" : "Derived estimate" };
+  }
+
+  if (Number.isFinite(wallet.volume) && Number.isFinite(wallet.roi)) {
+    return { value: money(Math.round(wallet.volume * (wallet.roi / 100))), label: "Derived estimate" };
+  }
+
+  return { value: "PnL unavailable", label: "Unavailable" };
 }
 
 function consensusLeadWallet(pageWallets: WalletRecord[], item: SmartMoneyConsensus) {
@@ -484,7 +504,7 @@ function useWalletIntelligenceData() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/wallet-intelligence")
+    fetch("/api/prediction-market-analytics")
       .then((response) => {
         if (!response.ok) throw new Error("Prediction market analytics API failed");
         return response.json() as Promise<unknown>;
@@ -513,6 +533,15 @@ function useWalletIntelligenceData() {
     consensusInsights: data?.consensusInsights ?? consensusInsights,
     clusters: data?.clusters ?? clusters,
     questionExamples: data?.questionExamples ?? questionExamples,
+    smartMoneyConsensus: data?.smartMoneyConsensus ?? smartMoneyConsensus,
+    sourceStatus: data?.sourceStatus ?? {
+      source: "fallback" as const,
+      label: "Fallback analytics. Live Falcon data unavailable.",
+      liveFields: [],
+      derivedFields: [],
+      fallbackFields: ["top traders", "rankings", "wallet addresses", "PnL", "ROI", "win rate", "volume", "positions", "consensus"],
+      unavailableFields: [],
+    },
   };
 }
 
@@ -720,7 +749,7 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
               <Badge className="mb-3 h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">Prediction market analytics system</Badge>
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">What are the best prediction market wallets doing right now?</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX tracks top Polymarket traders, open positions, recent changes, wallet alignment, and market exposure to surface actionable smart-money behavior.</p>
-              <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: Polymarket wallet analytics placeholder</div>
+              <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: {walletData.sourceStatus.label}</div>
             </div>
             <div className="grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
               <span>{walletData.stats.trackedWalletUniverse.toLocaleString()} wallets</span>
@@ -824,7 +853,10 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
                       </button>
                       <div className="mt-1 font-mono text-[10px] text-slate-600">{wallet.tag}</div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-emerald-200">{money(totalPnl(wallet))}</td>
+                    <td className="px-4 py-3 font-mono">
+                      <div className={totalPnl(wallet).label === "Unavailable" ? "text-slate-500" : "text-emerald-200"}>{totalPnl(wallet).value}</div>
+                      <div className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-600">{totalPnl(wallet).label}</div>
+                    </td>
                     <td className="px-4 py-3 font-mono text-emerald-200">{wallet.roi.toFixed(1)}%</td>
                     <td className="px-4 py-3 font-mono text-slate-200">{wallet.winRate}%</td>
                     <td className="px-4 py-3 font-mono text-slate-300">{wallet.activeMarkets}</td>
@@ -843,7 +875,10 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.075] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
               <span>Showing 1-{Math.min(50, displayedWallets.length)} of {walletData.stats.trackedWalletUniverse.toLocaleString()} tracked wallets</span>
               <span>Selected filter universe: {walletData.stats.activeWallets.toLocaleString()} active wallets</span>
-              <span>Source: Polymarket wallet analytics placeholder</span>
+              <span>Live from Falcon: wallet, rank, ROI, win rate, volume, active markets, h-score</span>
+              <span>Unavailable in table: active positions, recent trades, related wallets</span>
+              <span>Derived: market exposure summaries, profile interpretation</span>
+              <span>Source: {walletData.sourceStatus.source}</span>
             </div>
           </CardContent>
         </Panel>
@@ -851,12 +886,12 @@ function FullWalletIntelligencePage({ walletData }: { walletData: ReturnType<typ
         <Panel>
           <PanelHeader title="Smart Money Consensus" action="Actionable wallet cohorts" />
           <CardContent className="grid gap-3 p-4 xl:grid-cols-2">
-            {smartMoneyConsensus.map((item) => (
+            {walletData.smartMoneyConsensus.map((item) => (
               <div key={item.market} className="rounded-xl border border-white/[0.07] bg-black/25 p-4 transition hover:border-blue-300/20">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="text-sm font-semibold text-white">{item.cohort} — {item.market}</div>
-                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: Polymarket wallet analytics placeholder</div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: {item.source ?? walletData.sourceStatus.source}</div>
                   </div>
                   <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.06] font-mono text-[10px] text-blue-100">{item.evidenceStrength} evidence</Badge>
                 </div>
