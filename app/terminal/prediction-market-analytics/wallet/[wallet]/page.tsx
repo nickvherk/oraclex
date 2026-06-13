@@ -24,7 +24,15 @@ type LiveWalletProfile = WalletProfile & {
     unavailableFields: string[];
   };
   recentTrades?: WalletProfile["positions"];
-  positionHistory?: { label: string; value: string }[];
+  positionHistory?: WalletProfile["positionHistory"];
+  polymarketData?: {
+    source: "Polymarket Data API";
+    calls: { label: string; ok: boolean; status: number | null; count: number; error?: string }[];
+    value: { user?: string; value?: number } | null;
+    activePositionsLoaded: number;
+    recentTradesLoaded: number;
+    closedPositionsLoaded: number;
+  };
 };
 
 function unavailableProfile(wallet: string): LiveWalletProfile {
@@ -82,11 +90,11 @@ function count(value: number | null | undefined) {
 function SourceFieldLabels({ sourceStatus }: { sourceStatus: LiveWalletProfile["sourceStatus"] }) {
   const live = sourceStatus?.liveFields ?? [];
   const derived = sourceStatus?.derivedFields ?? [];
-  const unavailable = [...(sourceStatus?.unavailableFields ?? []), "active positions", "related wallets"].filter((field, index, fields) => fields.indexOf(field) === index);
+  const unavailable = [...(sourceStatus?.unavailableFields ?? []), "related wallets"].filter((field, index, fields) => fields.indexOf(field) === index);
 
   return (
     <div className="mt-3 grid gap-2 text-[10px] md:grid-cols-3">
-      <SourceList label="Live from Falcon" items={live} tone="text-emerald-200" />
+      <SourceList label="Live Data" items={live} tone="text-emerald-200" />
       <SourceList label="Derived" items={derived} tone="text-blue-100" />
       <SourceList label="Unavailable" items={unavailable} tone="text-amber-100" />
     </div>
@@ -104,6 +112,22 @@ function SourceList({ label, items, tone }: { label: string; items: string[]; to
 
 function UnavailableMessage({ copy }: { copy: string }) {
   return <div className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 font-mono text-[11px] text-slate-500">{copy}</div>;
+}
+
+function price(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  return value.toFixed(3);
+}
+
+function signedMoney(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  const formatted = money(value);
+  return value > 0 ? `+${formatted}` : formatted;
+}
+
+function token(value: string | undefined) {
+  if (!value) return "Unavailable";
+  return value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
 }
 
 export default function WalletProfilePage({ params }: WalletProfilePageProps) {
@@ -152,7 +176,10 @@ export default function WalletProfilePage({ params }: WalletProfilePageProps) {
               </div>
               <SourceFieldLabels sourceStatus={profile.sourceStatus} />
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source: {profile.sourceStatus?.label ?? "Wallet-specific Falcon profile unavailable."}</div>
+            <div className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+              <span>Falcon: ranking / H-score / ROI / leaderboard</span>
+              <span>Polymarket Data API: positions / trades / value / closed positions</span>
+            </div>
           </div>
 
           <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-7">
@@ -181,35 +208,43 @@ export default function WalletProfilePage({ params }: WalletProfilePageProps) {
         </Panel>
 
         <Panel>
-          <PanelHeader title="Active Positions" action={profile.positions.length ? `${profile.positions.length} live positions` : "Unavailable"} />
+          <PanelHeader title="Active Positions" action={profile.positions.length ? `${profile.positions.length} from Polymarket Data API` : "No active positions"} />
           <CardContent className="overflow-x-auto p-0">
             {profile.positions.length ? (
-              <table className="w-full min-w-[860px] text-left text-xs">
+              <table className="w-full min-w-[1320px] text-left text-xs">
                 <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
-                  <tr>{["Market", "Side", "Size", "Avg Price", "Current Price", "Unrealized PnL", "Conviction", "Last Updated"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+                  <tr>{["Market", "Outcome", "Side", "Size", "Avg Price", "Current Price", "Current Value", "Cash PnL", "% PnL", "Realized PnL", "Condition", "Asset"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
                 </thead>
                 <tbody>
                   {profile.positions.map((position) => (
-                    <tr key={`${position.market}-${position.side}`} className="border-b border-white/[0.055]">
-                      <td className="px-4 py-3 font-semibold text-white">{position.market}</td>
+                    <tr key={`${position.conditionId}-${position.asset}-${position.market}-${position.side}`} className="border-b border-white/[0.055]">
+                      <td className="max-w-[320px] px-4 py-3">
+                        <div className="font-semibold text-white">{position.market}</div>
+                        <div className="mt-1 truncate font-mono text-[10px] text-slate-600">{position.slug ?? "No slug"}</div>
+                        <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100">Source: {position.source ?? "Polymarket Data API"}</div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-slate-300">{position.outcome ?? position.side}</td>
                       <td className="px-4 py-3"><BiasBadge bias={position.side === "YES" ? "Bullish" : "Bearish"} /></td>
-                      <td className="px-4 py-3 font-mono text-slate-200">{money(position.positionSize)}</td>
+                      <td className="px-4 py-3 font-mono text-slate-200">{position.size?.toLocaleString() ?? money(position.positionSize)}</td>
                       <td className="px-4 py-3 font-mono text-slate-300">{position.avgPrice}</td>
                       <td className="px-4 py-3 font-mono text-blue-100">{position.currentPrice}</td>
-                      <td className={`px-4 py-3 font-mono ${position.unrealizedPnl.startsWith("+") ? "text-emerald-200" : "text-red-200"}`}>{position.unrealizedPnl}</td>
-                      <td className="px-4 py-3 text-slate-300">{position.conviction}</td>
-                      <td className="px-4 py-3 font-mono text-slate-500">{position.lastUpdated}</td>
+                      <td className="px-4 py-3 font-mono text-slate-200">{money(position.currentValue)}</td>
+                      <td className={`px-4 py-3 font-mono ${(position.cashPnl ?? 0) >= 0 ? "text-emerald-200" : "text-red-200"}`}>{signedMoney(position.cashPnl)}</td>
+                      <td className="px-4 py-3 font-mono text-slate-300">{percent(position.percentPnl)}</td>
+                      <td className="px-4 py-3 font-mono text-slate-300">{signedMoney(position.realizedPnl)}</td>
+                      <td className="px-4 py-3 font-mono text-slate-500">{token(position.conditionId)}</td>
+                      <td className="px-4 py-3 font-mono text-slate-500">{token(position.asset)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            ) : <UnavailableMessage copy="No live positions available from Falcon for this wallet." />}
+            ) : <UnavailableMessage copy="No active Polymarket positions found for this wallet." />}
           </CardContent>
         </Panel>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <Panel>
-            <PanelHeader title="Recent Position Changes" action="Latest wallet movement" />
+            <PanelHeader title="Recent Position Changes" action={profile.recentTrades?.some((trade) => trade.source === "Polymarket Data API") ? "Source: Polymarket Data API" : "Source: Falcon fallback"} />
             <CardContent className="space-y-2 p-4">
               {profile.recentChanges.map((change) => <div key={change} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 font-mono text-[11px] text-slate-300">{change}</div>)}
             </CardContent>
@@ -230,28 +265,45 @@ export default function WalletProfilePage({ params }: WalletProfilePageProps) {
 
         <div className="grid gap-4 xl:grid-cols-2">
           <Panel>
-            <PanelHeader title="Recent Trades" action={profile.recentTrades?.length ? `${profile.recentTrades.length} live trades` : "Unavailable"} />
-            <CardContent className="space-y-2 p-4">
-              {(profile.recentTrades?.length ? profile.recentTrades : []).map((trade) => (
-                <div key={`${trade.market}-${trade.lastUpdated}-${trade.positionSize}`} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs text-slate-300">
-                  <span className="font-semibold text-white">{trade.market}</span>
-                  <span className="ml-2 font-mono text-blue-100">{trade.side}</span>
-                  <span className="ml-2 font-mono">{money(trade.positionSize)}</span>
-                  <span className="ml-2 font-mono text-slate-500">@ {trade.avgPrice}</span>
-                  <span className="ml-2 font-mono text-slate-500">{trade.lastUpdated}</span>
-                </div>
-              ))}
-              {!profile.recentTrades?.length ? <UnavailableMessage copy="No recent trades returned by Falcon for this wallet." /> : null}
+            <PanelHeader title="Recent Trades" action={profile.recentTrades?.length ? `${profile.recentTrades.length} wallet-specific trades` : "No trades"} />
+            <CardContent className="overflow-x-auto p-0">
+              {profile.recentTrades?.length ? (
+                <table className="w-full min-w-[900px] text-left text-xs">
+                  <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                    <tr>{["Market", "Outcome", "Side", "Size", "Price", "Time", "Condition", "Asset", "Source"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {profile.recentTrades.map((trade) => (
+                      <tr key={`${trade.market}-${trade.lastUpdated}-${trade.positionSize}-${trade.asset}`} className="border-b border-white/[0.055]">
+                        <td className="max-w-[260px] px-4 py-3">
+                          <div className="font-semibold text-white">{trade.market}</div>
+                          <div className="mt-1 truncate font-mono text-[10px] text-slate-600">{trade.slug ?? "No slug"}</div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-300">{trade.outcome ?? trade.side}</td>
+                        <td className="px-4 py-3 font-mono text-blue-100">{trade.tradeSide ?? trade.side}</td>
+                        <td className="px-4 py-3 font-mono text-slate-200">{trade.size?.toLocaleString() ?? money(trade.positionSize)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-300">{price(trade.price)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{trade.lastUpdated}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{token(trade.conditionId)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{token(trade.asset)}</td>
+                        <td className="px-4 py-3 font-mono text-blue-100">{trade.source ?? "Falcon"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <UnavailableMessage copy="No recent Polymarket or Falcon trades found for this wallet." />}
             </CardContent>
           </Panel>
 
           <Panel>
-            <PanelHeader title="Position History" action={profile.positionHistory?.length ? "PnL series" : "Unavailable"} />
+            <PanelHeader title="Position History" action={profile.positionHistory?.length ? "Closed positions" : "No closed positions"} />
             <CardContent className="grid gap-2 p-4 md:grid-cols-2">
-              {(profile.positionHistory?.length ? profile.positionHistory : [{ label: "Position history", value: "unavailable" }]).slice(0, 8).map((item) => (
+              {(profile.positionHistory?.length ? profile.positionHistory : [{ label: "Closed positions", value: "No closed Polymarket positions found" }]).slice(0, 8).map((item) => (
                 <div key={`${item.label}-${item.value}`} className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2">
-                  <div className="truncate font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{item.label}</div>
+                  <div className="truncate font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{item.market ?? item.label}</div>
                   <div className="mt-1 font-mono text-sm text-slate-200">{item.value}</div>
+                  <div className="mt-1 font-mono text-[10px] text-slate-500">{item.outcome ? `Outcome: ${item.outcome}` : "Outcome unavailable"}</div>
+                  <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100">Source: {item.source ?? "Polymarket Data API"}</div>
                 </div>
               ))}
             </CardContent>

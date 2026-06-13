@@ -7,6 +7,19 @@ export type WalletPosition = {
   unrealizedPnl: string;
   conviction: "High" | "Medium" | "Watch";
   lastUpdated: string;
+  source?: "Polymarket Data API" | "Falcon";
+  slug?: string;
+  outcome?: string;
+  size?: number | null;
+  currentValue?: number | null;
+  cashPnl?: number | null;
+  percentPnl?: number | null;
+  realizedPnl?: number | null;
+  conditionId?: string;
+  asset?: string;
+  price?: number | null;
+  timestamp?: number | null;
+  tradeSide?: string;
 };
 
 export type WalletProfile = {
@@ -28,6 +41,16 @@ export type WalletProfile = {
   relatedWallets: { wallet: string; tag: string; relationship: string }[];
   evidence: string[];
   performance: { label: string; value: string }[];
+  positionHistory?: {
+    label: string;
+    value: string;
+    market?: string;
+    realizedPnl?: number | null;
+    percentPnl?: number | null;
+    outcome?: string;
+    timestamp?: number | null;
+    source?: "Polymarket Data API" | "Falcon";
+  }[];
 };
 
 export function money(value: number | null | undefined) {

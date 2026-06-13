@@ -95,6 +95,7 @@ const marketRouteTitles: Record<string, string> = {
 
 function getRouteTitle(pathname: string) {
   if (pathname.startsWith("/terminal/prediction-market-analytics/wallet/")) return "Wallet Profile";
+  if (pathname.startsWith("/terminal/flows/wallet/")) return "Hyperliquid Wallet Profile";
   const marketMatch = pathname.match(/^\/terminal\/markets\/([^/]+)$/);
   if (marketMatch) return marketRouteTitles[marketMatch[1]] ?? "Market Workspace";
   return routeTitles[pathname] ?? "OracleX Intelligence Workspace";

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, Database, Info, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
 import { FeatureGate } from "@/components/terminal/access-gate";
@@ -21,6 +22,11 @@ const directions = ["Any Direction", "Long", "Short", "Mixed"] as const;
 const leverageRanges = ["Any Leverage", "0-2x", "2-5x", "5x+"] as const;
 const abnormalityScores = ["Any Score", "70+", "80+", "90+"] as const;
 const traderFilters = ["All Traders", "Smart Money Only", "Whale Only", "Profitable Traders Only"] as const;
+const trackedWhaleArchitectureStatus = {
+  discoveredWallets: 0,
+  trackedWallets: 0,
+  latestDiscovery: "Pending first ingestion run",
+};
 
 type Asset = string;
 type Timeframe = (typeof timeframes)[number];
@@ -34,6 +40,17 @@ type SortKey = "netFlow7d" | "flowVsAvg" | "openInterestChange" | "avgLeverage" 
 
 type AssetFlow = {
   asset: string;
+  markPrice?: number;
+  openInterest?: number;
+  openInterestUsd?: number;
+  funding?: number | null;
+  volume24h?: number;
+  premium?: number | null;
+  impactPrice?: number | null;
+  oiChange?: number | null;
+  netFlow?: number | null;
+  availability?: Record<string, "live" | "derived" | "unavailable">;
+  notes?: string[];
   netFlow7d: number;
   flowVsAvg: number;
   topTraderBias: "Long-heavy" | "Short-heavy" | "Mixed";
@@ -144,8 +161,66 @@ type TraderCluster = {
 
 type HyperliquidFlowsPayload = {
   source?: unknown;
+  sourceStatus?: unknown;
+  lastUpdated?: unknown;
   updatedAt?: unknown;
+  refresh?: unknown;
   assets?: unknown;
+  topTraders?: unknown;
+  metrics?: unknown;
+  availability?: unknown;
+  limitations?: unknown;
+  error?: unknown;
+};
+
+type TrackedWalletLeaderboardRow = {
+  wallet: string;
+  rank: number;
+  whaleScore: number;
+  accountValue: number;
+  primaryAsset: string | null;
+  direction: "Long" | "Short" | "Mixed" | "Flat";
+  grossExposure: number;
+  netExposure: number;
+  avgLeverage: number;
+  unrealizedPnl: number;
+  positionCount: number;
+  lastSeenAt: string | null;
+  assetsSeen: string[];
+};
+
+type TrackedWalletExposureWallet = {
+  wallet: string;
+  rank: number;
+  notional: number;
+  accountValue: number;
+};
+
+type TrackedWalletAssetExposure = {
+  asset: string;
+  longWalletCount: number;
+  shortWalletCount: number;
+  longNotional: number;
+  shortNotional: number;
+  netNotional: number;
+  longShortRatio: string;
+  topLongWallets: TrackedWalletExposureWallet[];
+  topShortWallets: TrackedWalletExposureWallet[];
+};
+
+type HyperliquidWalletsPayload = {
+  source?: unknown;
+  method?: unknown;
+  officialHyperliquidLeaderboard?: unknown;
+  updatedAt?: unknown;
+  stats?: {
+    discoveredWallets?: unknown;
+    enrichedWallets?: unknown;
+    latestIngestTime?: unknown;
+  };
+  wallets?: unknown;
+  assetExposures?: unknown;
+  selectedAssetExposure?: unknown;
   error?: unknown;
 };
 
@@ -496,6 +571,20 @@ function signedPct(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 }
 
+function numberOrNull(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  return null;
+}
+
+function stringOrNull(value: unknown) {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -564,7 +653,7 @@ function applyAssetFlowFilters(flows: AssetFlow[], filters: FlowFilterState) {
     .filter((flow) => filters.direction === "Any Direction" || flow.topTraderBias.startsWith(filters.direction) || (filters.direction === "Mixed" && flow.topTraderBias === "Mixed"))
     .filter((flow) => filters.minInflow <= 0 || Math.abs(flow.netFlow7d) >= filters.minInflow * 1000000)
     .filter((flow) => filters.minOiChange <= 0 || flow.openInterestChange >= filters.minOiChange)
-    .filter((flow) => flow.traderCount >= filters.minTraderCount)
+    .filter((flow) => filters.minTraderCount <= 0 || flow.traderCount >= filters.minTraderCount)
     .filter((flow) => flow.abnormalFlowIndex >= filters.minAbnormality)
     .filter((flow) => filters.leverageRange === "Any Leverage" || (filters.leverageRange === "0-2x" && flow.avgLeverage <= 2) || (filters.leverageRange === "2-5x" && flow.avgLeverage > 2 && flow.avgLeverage <= 5) || (filters.leverageRange === "5x+" && flow.avgLeverage > 5))
     .filter((flow) => filters.traderFilter !== "Whale Only" || flow.whaleConcentration === "High")
@@ -576,20 +665,38 @@ function applyAssetFlowFilters(flows: AssetFlow[], filters: FlowFilterState) {
 
 function normalizeIncomingAssetFlow(value: unknown): AssetFlow | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
   const flow = value as Partial<AssetFlow>;
   const asset = normalizeAssetSymbol(value);
   if (!asset) return null;
 
+  const hyperliquid = typeof row.hyperliquid === "object" && row.hyperliquid !== null && !Array.isArray(row.hyperliquid) ? (row.hyperliquid as Record<string, unknown>) : {};
+  const raw = typeof row.raw === "object" && row.raw !== null && !Array.isArray(row.raw) ? (row.raw as Record<string, unknown>) : {};
+  const markPrice = numberOrNull(row.markPrice) ?? numberOrNull(hyperliquid.markPrice);
+  const openInterest = numberOrNull(row.openInterest) ?? numberOrNull(hyperliquid.openInterest);
+  const openInterestUsd = numberOrNull(row.openInterestUsd) ?? numberOrNull(hyperliquid.openInterestUsd) ?? numberOrNull(raw.openInterestUsd) ?? (openInterest !== null && markPrice !== null ? openInterest * markPrice : null);
+  const funding = numberOrNull(row.funding) ?? numberOrNull(hyperliquid.fundingRate);
+  const volume24h = numberOrNull(row.volume24h) ?? numberOrNull(hyperliquid.volume24h);
+  const oiChange = numberOrNull(row.oiChange) ?? numberOrNull(row.openInterestChange) ?? numberOrNull(hyperliquid.openInterestChangeProxy);
+  const netFlow = numberOrNull(row.netFlow) ?? numberOrNull(row.netFlow7d);
+  const avgLeverage = numberOrNull(row.avgLeverage);
+  const abnormalFlowIndex = numberOrNull(row.abnormalFlowIndex);
+  const capitalRotationScore = numberOrNull(row.capitalRotationScore);
+  const flowDivergenceIndex = numberOrNull(row.flowDivergenceIndex);
+  const flowVsAvg = numberOrNull(row.flowVsAvg);
+  const openInterestChange = numberOrNull(row.openInterestChange) ?? oiChange;
+  const netFlow7d = numberOrNull(row.netFlow7d) ?? netFlow;
+
   const valid =
-    typeof flow.netFlow7d === "number" &&
-    typeof flow.flowVsAvg === "number" &&
+    netFlow7d !== null &&
+    flowVsAvg !== null &&
     (flow.topTraderBias === "Long-heavy" || flow.topTraderBias === "Short-heavy" || flow.topTraderBias === "Mixed") &&
-    typeof flow.openInterestChange === "number" &&
+    openInterestChange !== null &&
     typeof flow.longShortRatio === "string" &&
-    typeof flow.avgLeverage === "number" &&
-    typeof flow.abnormalFlowIndex === "number" &&
-    typeof flow.capitalRotationScore === "number" &&
-    typeof flow.flowDivergenceIndex === "number" &&
+    avgLeverage !== null &&
+    abnormalFlowIndex !== null &&
+    capitalRotationScore !== null &&
+    flowDivergenceIndex !== null &&
     typeof flow.aiExplanation === "string" &&
     Array.isArray(flow.relatedMarkets) &&
     Array.isArray(flow.rawDatapoints);
@@ -600,6 +707,36 @@ function normalizeIncomingAssetFlow(value: unknown): AssetFlow | null {
     {
       ...(flow as AssetFlow),
       asset,
+      markPrice: markPrice ?? undefined,
+      openInterest: openInterest ?? undefined,
+      openInterestUsd: openInterestUsd ?? undefined,
+      funding,
+      volume24h: volume24h ?? undefined,
+      oiChange,
+      netFlow,
+      netFlow7d,
+      flowVsAvg,
+      openInterestChange,
+      avgLeverage,
+      abnormalFlowIndex,
+      capitalRotationScore,
+      flowDivergenceIndex,
+      hyperliquid: {
+        ...(flow.hyperliquid ?? {}),
+        markPrice: markPrice ?? flow.hyperliquid?.markPrice ?? 0,
+        previousDayPrice: flow.hyperliquid?.previousDayPrice ?? markPrice ?? 0,
+        openInterest: openInterest ?? flow.hyperliquid?.openInterest ?? 0,
+        openInterestUsd: openInterestUsd ?? flow.hyperliquid?.openInterestUsd ?? 0,
+        volume24h: volume24h ?? flow.hyperliquid?.volume24h ?? 0,
+        fundingRate: funding,
+        dailyPriceChange: flow.hyperliquid?.dailyPriceChange ?? 0,
+        openInterestChangeProxy: oiChange ?? flow.hyperliquid?.openInterestChangeProxy ?? 0,
+        volumeIntensity: flow.hyperliquid?.volumeIntensity ?? 0,
+        flowBias: flow.hyperliquid?.flowBias ?? "Neutral",
+        abnormalFlowIndex,
+        capitalRotationScore,
+        leveragePressureProxy: flow.hyperliquid?.leveragePressureProxy ?? 0,
+      },
     }
   );
 }
@@ -609,6 +746,76 @@ function formatTimestamp(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Awaiting first tick";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "Pending";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Pending";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function truncateWallet(wallet: string) {
+  return wallet.length > 12 ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : wallet;
+}
+
+function normalizeWalletLeaderboardRow(value: unknown): TrackedWalletLeaderboardRow | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const wallet = stringOrNull(row.wallet);
+  const rank = numberOrNull(row.rank);
+  if (!wallet || rank === null) return null;
+
+  const direction = row.direction === "Long" || row.direction === "Short" || row.direction === "Mixed" || row.direction === "Flat" ? row.direction : "Flat";
+
+  return {
+    wallet,
+    rank,
+    whaleScore: numberOrNull(row.whaleScore) ?? 0,
+    accountValue: numberOrNull(row.accountValue) ?? 0,
+    primaryAsset: stringOrNull(row.primaryAsset),
+    direction,
+    grossExposure: numberOrNull(row.grossExposure) ?? 0,
+    netExposure: numberOrNull(row.netExposure) ?? 0,
+    avgLeverage: numberOrNull(row.avgLeverage) ?? 0,
+    unrealizedPnl: numberOrNull(row.unrealizedPnl) ?? 0,
+    positionCount: numberOrNull(row.positionCount) ?? 0,
+    lastSeenAt: stringOrNull(row.lastSeenAt),
+    assetsSeen: Array.isArray(row.assetsSeen) ? row.assetsSeen.filter((asset): asset is string => typeof asset === "string") : [],
+  };
+}
+
+function normalizeExposureWallet(value: unknown): TrackedWalletExposureWallet | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const wallet = stringOrNull(row.wallet);
+  if (!wallet) return null;
+
+  return {
+    wallet,
+    rank: numberOrNull(row.rank) ?? 0,
+    notional: numberOrNull(row.notional) ?? 0,
+    accountValue: numberOrNull(row.accountValue) ?? 0,
+  };
+}
+
+function normalizeAssetExposure(value: unknown): TrackedWalletAssetExposure | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const asset = stringOrNull(row.asset);
+  if (!asset) return null;
+
+  return {
+    asset,
+    longWalletCount: numberOrNull(row.longWalletCount) ?? 0,
+    shortWalletCount: numberOrNull(row.shortWalletCount) ?? 0,
+    longNotional: numberOrNull(row.longNotional) ?? 0,
+    shortNotional: numberOrNull(row.shortNotional) ?? 0,
+    netNotional: numberOrNull(row.netNotional) ?? 0,
+    longShortRatio: stringOrNull(row.longShortRatio) ?? "0/0",
+    topLongWallets: Array.isArray(row.topLongWallets) ? row.topLongWallets.map(normalizeExposureWallet).filter((wallet): wallet is TrackedWalletExposureWallet => Boolean(wallet)) : [],
+    topShortWallets: Array.isArray(row.topShortWallets) ? row.topShortWallets.map(normalizeExposureWallet).filter((wallet): wallet is TrackedWalletExposureWallet => Boolean(wallet)) : [],
+  };
 }
 
 function shortBiasToDirection(flow: AssetFlow, profile: TopTraderProfile): TopTraderDirection {
@@ -696,6 +903,8 @@ function usingClockLabel(activity: string, timestamp: string) {
 }
 
 function deriveTraderClusters(traders: TopTraderIntelligence[], flows: AssetFlow[]): TraderCluster[] {
+  if (traders.length === 0) return [];
+
   return flows
     .map((flow) => {
       const clusterTraders = traders.filter((trader) => trader.primaryAsset === flow.asset);
@@ -704,14 +913,7 @@ function deriveTraderClusters(traders: TopTraderIntelligence[], flows: AssetFlow
       const bullishCount = clusterTraders.filter((trader) => trader.currentBias === "Bullish").length;
       const bearishCount = clusterTraders.filter((trader) => trader.currentBias === "Bearish").length;
       const confidence = clampNumber(Math.round((flow.abnormalFlowIndex + flow.smartMoneyConcentration + Math.abs(flow.openInterestChange)) / 3), 0, 100);
-      const title =
-        flow.asset === "SOL"
-          ? "High-conviction SOL cluster detected"
-          : flow.asset === "BTC"
-            ? "BTC leverage expansion cluster forming"
-            : flow.asset === "ETH"
-              ? "Defensive ETH rotation underway"
-              : "Coordinated HYPE accumulation detected";
+      const title = `${flow.asset} tracked wallet cluster`;
 
       return {
         title,
@@ -788,6 +990,46 @@ function SourceLine({ source = "Hyperliquid API", refresh = "hourly" }: { source
   return <div className="mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">Source: {source} / Refresh: {refresh}</div>;
 }
 
+function AvailabilityLabel({ value }: { value?: "live" | "derived" | "unavailable" }) {
+  const label = value ?? "derived";
+  const color = label === "live" ? "text-emerald-200" : label === "unavailable" ? "text-amber-200" : "text-blue-100";
+  return <div className={`mt-1 font-mono text-[9px] uppercase tracking-[0.12em] ${color}`}>{label}</div>;
+}
+
+function formatMarketMoney(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  return money(value);
+}
+
+function formatFunding(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  return `${(value * 100).toFixed(4)}%`;
+}
+
+function formatPrice(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  if (value >= 1000) return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (value >= 1) return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 6 })}`;
+}
+
+function getFlowMarkPrice(flow: AssetFlow) {
+  return flow.markPrice ?? flow.hyperliquid?.markPrice ?? null;
+}
+
+function getFlowOpenInterestUsd(flow: AssetFlow) {
+  const markPrice = getFlowMarkPrice(flow);
+  return flow.openInterestUsd ?? flow.hyperliquid?.openInterestUsd ?? (typeof flow.openInterest === "number" && typeof markPrice === "number" ? flow.openInterest * markPrice : null);
+}
+
+function getFlowFunding(flow: AssetFlow) {
+  return flow.funding ?? flow.hyperliquid?.fundingRate ?? null;
+}
+
+function getFlowVolume24h(flow: AssetFlow) {
+  return flow.volume24h ?? flow.hyperliquid?.volume24h ?? null;
+}
+
 export default function CrossMarketFlowsPage() {
   return (
     <FeatureGate feature="crossMarketFlows" explanation="Hyperliquid Flows are part of the Operator terminal and Enterprise workspace.">
@@ -797,10 +1039,19 @@ export default function CrossMarketFlowsPage() {
 }
 
 function CrossMarketFlowsWorkspace() {
+  const router = useRouter();
   const [liveAssetFlows, setLiveAssetFlows] = useState<AssetFlow[] | null>(null);
   const [liveDataError, setLiveDataError] = useState<string | null>(null);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState<string | null>(null);
+  const [liveSourceStatus, setLiveSourceStatus] = useState<"live" | "partial" | "fallback">("fallback");
+  const [liveRefresh, setLiveRefresh] = useState("live / 60s");
+  const [liveLimitations, setLiveLimitations] = useState<string[]>([]);
   const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
+  const [trackedWalletRows, setTrackedWalletRows] = useState<TrackedWalletLeaderboardRow[]>([]);
+  const [trackedAssetExposures, setTrackedAssetExposures] = useState<TrackedWalletAssetExposure[]>([]);
+  const [trackedWalletStats, setTrackedWalletStats] = useState({ discoveredWallets: 0, enrichedWallets: 0, latestIngestTime: null as string | null });
+  const [trackedWalletError, setTrackedWalletError] = useState<string | null>(null);
+  const [isLoadingTrackedWallets, setIsLoadingTrackedWallets] = useState(true);
   const [asset, setAsset] = useState<Asset>("All");
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
   const [group, setGroup] = useState<TraderGroup>("Top 50");
@@ -811,7 +1062,7 @@ function CrossMarketFlowsWorkspace() {
   const [traderFilter, setTraderFilter] = useState<TraderFilter>("All Traders");
   const [minInflow, setMinInflow] = useState(0);
   const [minOiChange, setMinOiChange] = useState(0);
-  const [minTraderCount, setMinTraderCount] = useState(20);
+  const [minTraderCount, setMinTraderCount] = useState(0);
   const [query, setQuery] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("abnormalFlowIndex");
@@ -822,7 +1073,7 @@ function CrossMarketFlowsWorkspace() {
     return normalizedFlows.length > 0 ? normalizedFlows : getFallbackAssetFlows();
   }, [liveAssetFlows]);
   const usingLiveData = liveAssetFlows !== null && liveDataError === null && normalizeDisplayAssetFlows(liveAssetFlows).length > 0;
-  const assetDataSource = usingLiveData ? "live" : "fallback";
+  const assetDataSource = usingLiveData ? liveSourceStatus : "fallback";
   const assetOptions = defaultAssetOptions;
 
   useEffect(() => {
@@ -859,7 +1110,10 @@ function CrossMarketFlowsWorkspace() {
         if (!cancelled) {
           setLiveAssetFlows(nextFlows);
           setLiveDataError(null);
-          setLiveUpdatedAt(typeof payload.updatedAt === "string" ? payload.updatedAt : new Date().toISOString());
+          setLiveUpdatedAt(typeof payload.lastUpdated === "string" ? payload.lastUpdated : typeof payload.updatedAt === "string" ? payload.updatedAt : new Date().toISOString());
+          setLiveSourceStatus(payload.sourceStatus === "live" || payload.sourceStatus === "partial" || payload.sourceStatus === "fallback" ? payload.sourceStatus : "partial");
+          setLiveRefresh(typeof payload.refresh === "string" ? payload.refresh : "live / 60s");
+          setLiveLimitations(Array.isArray(payload.limitations) ? payload.limitations.filter((item): item is string => typeof item === "string") : []);
           setSelectedFlow((current) => nextFlows.find((flow) => flow.asset === current.asset) ?? nextFlows[0]);
           setSelectedTarget((current) => (current.type === "asset" && nextFlows.some((flow) => flow.asset === current.asset) ? current : { type: "asset", asset: nextFlows[0].asset }));
         }
@@ -870,6 +1124,9 @@ function CrossMarketFlowsWorkspace() {
           setLiveAssetFlows(fallbackFlows);
           setLiveDataError(error instanceof Error ? error.message : "Unable to load Hyperliquid flows");
           setLiveUpdatedAt(null);
+          setLiveSourceStatus("fallback");
+          setLiveRefresh("live / 60s");
+          setLiveLimitations(["Live Hyperliquid market data could not be loaded. Local fallback rows are labeled fallback."]);
           setSelectedFlow((current) => fallbackFlows.find((flow) => flow.asset === current.asset) ?? fallbackFlows[0]);
           setSelectedTarget((current) => (current.type === "asset" && fallbackFlows.some((flow) => flow.asset === current.asset) ? current : { type: "asset", asset: fallbackFlows[0].asset }));
         }
@@ -879,7 +1136,56 @@ function CrossMarketFlowsWorkspace() {
     }
 
     void loadHyperliquidFlows();
-    const interval = window.setInterval(() => void loadHyperliquidFlows(), 3600000);
+    const interval = window.setInterval(() => void loadHyperliquidFlows(), 60000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTrackedWallets() {
+      if (!cancelled) setIsLoadingTrackedWallets(true);
+
+      try {
+        const response = await fetch("/api/hyperliquid-wallets?limit=50");
+        const payload = (await response.json()) as HyperliquidWalletsPayload;
+
+        const wallets = Array.isArray(payload.wallets) ? payload.wallets.map(normalizeWalletLeaderboardRow).filter((wallet): wallet is TrackedWalletLeaderboardRow => Boolean(wallet)) : [];
+        const assetExposures = Array.isArray(payload.assetExposures) ? payload.assetExposures.map(normalizeAssetExposure).filter((exposure): exposure is TrackedWalletAssetExposure => Boolean(exposure)) : [];
+        const stats = typeof payload.stats === "object" && payload.stats !== null && !Array.isArray(payload.stats) ? payload.stats : {};
+
+        if (!response.ok) {
+          throw new Error(typeof payload.error === "string" ? payload.error : `Hyperliquid wallet API returned ${response.status}`);
+        }
+
+        if (!cancelled) {
+          setTrackedWalletRows(wallets);
+          setTrackedAssetExposures(assetExposures);
+          setTrackedWalletStats({
+            discoveredWallets: numberOrNull(stats.discoveredWallets) ?? 0,
+            enrichedWallets: numberOrNull(stats.enrichedWallets) ?? 0,
+            latestIngestTime: stringOrNull(stats.latestIngestTime),
+          });
+          setTrackedWalletError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setTrackedWalletRows([]);
+          setTrackedAssetExposures([]);
+          setTrackedWalletStats({ discoveredWallets: 0, enrichedWallets: 0, latestIngestTime: null });
+          setTrackedWalletError(error instanceof Error ? error.message : "Unable to load tracked Hyperliquid wallets");
+        }
+      } finally {
+        if (!cancelled) setIsLoadingTrackedWallets(false);
+      }
+    }
+
+    void loadTrackedWallets();
+    const interval = window.setInterval(() => void loadTrackedWallets(), 60000);
 
     return () => {
       cancelled = true;
@@ -917,7 +1223,7 @@ function CrossMarketFlowsWorkspace() {
     traderFilter !== "All Traders" ||
     minInflow > 0 ||
     minOiChange > 0 ||
-    minTraderCount !== 20 ||
+    minTraderCount > 0 ||
     query.length > 0;
   const defaultTableRows = useMemo(() => selectDefaultTrackedAssetRows(filteredFlows), [filteredFlows]);
   const tableRowsBeforeFallback = filtersActive ? filteredFlows : defaultTableRows.length > 0 ? defaultTableRows : filteredFlows.slice(0, defaultAssetTableLimit);
@@ -925,12 +1231,16 @@ function CrossMarketFlowsWorkspace() {
   const tableFallbackRows = fallbackFilteredRows.length > 0 ? fallbackFilteredRows : getFallbackAssetFlows();
   const tableFallbackActive = tableRowsBeforeFallback.length === 0;
   const tableRows = tableFallbackActive ? tableFallbackRows : tableRowsBeforeFallback;
-  const visibleAssetSource = tableFallbackActive ? "fallback until live mapping is fixed" : assetDataSource;
+  const visibleAssetSource = tableFallbackActive ? "local fallback dataset" : assetDataSource;
   const metricFlows = tableFallbackActive ? tableRows : assetFlows;
-  const topTraderRows = useMemo(() => deriveTopTraderIntelligence(assetFlows, liveUpdatedAt), [assetFlows, liveUpdatedAt]);
+  const topTraderRows = useMemo<TopTraderIntelligence[]>(() => [], []);
   const filteredTopTraderRows = topTraderRows.filter((trader) => asset === "All" || trader.primaryAsset === asset);
   const selectedTrader = selectedTarget.type === "trader" ? topTraderRows.find((trader) => trader.wallet === selectedTarget.trader) ?? topTraderRows[0] : null;
   const selectedAssetFlow = selectedTarget.type === "asset" ? assetFlows.find((flow) => flow.asset === selectedTarget.asset) ?? selectedFlow : selectedFlow;
+  const filteredTrackedWalletRows = trackedWalletRows.filter((wallet) => asset === "All" || wallet.primaryAsset === asset || wallet.assetsSeen.includes(asset));
+  const visibleTrackedWalletRows = filteredTrackedWalletRows.length > 0 || asset !== "All" ? filteredTrackedWalletRows : trackedWalletRows;
+  const selectedAssetExposure = trackedAssetExposures.find((exposure) => exposure.asset === selectedAssetFlow.asset) ?? null;
+  const trackedWalletsAvailable = trackedWalletRows.length > 0 && trackedWalletStats.enrichedWallets > 0;
 
   const largestInflow = metricFlows.reduce((best, flow) => (flow.netFlow7d > best.netFlow7d ? flow : best), metricFlows[0]);
   const largestOutflow = metricFlows.reduce((best, flow) => (flow.netFlow7d < best.netFlow7d ? flow : best), metricFlows[0]);
@@ -940,14 +1250,14 @@ function CrossMarketFlowsWorkspace() {
   const positiveSmartMoneyInflow = metricFlows.filter((flow) => flow.netFlow7d > 0).reduce((sum, flow) => sum + flow.netFlow7d, 0);
   const totalSmartMoneyInflow = positiveSmartMoneyInflow > 0 ? positiveSmartMoneyInflow : metricFlows.reduce((sum, flow) => sum + flow.netFlow7d, 0);
   const netSmartMoneyExposure = topTraderRows.reduce((sum, trader) => sum + trader.netExposure, 0);
-  const avgTraderLeverage = topTraderRows.reduce((sum, trader) => sum + trader.avgLeverage, 0) / topTraderRows.length;
+  const avgTraderLeverage = topTraderRows.length ? topTraderRows.reduce((sum, trader) => sum + trader.avgLeverage, 0) / topTraderRows.length : 0;
   const highConvictionCount = topTraderRows.filter((trader) => trader.convictionScore >= 72).length;
   const topAssetConcentration = assetFlows.reduce((best, flow) => {
     const exposure = topTraderRows.filter((trader) => trader.primaryAsset === flow.asset).reduce((sum, trader) => sum + Math.abs(trader.netExposure), 0);
     return exposure > best.exposure ? { asset: flow.asset, exposure } : best;
   }, { asset: assetFlows[0].asset, exposure: 0 });
-  const traderDivergenceScore = Math.round(topTraderRows.reduce((sum, trader) => sum + trader.divergenceIndex, 0) / topTraderRows.length);
-  const traderNetLongPct = Math.round((topTraderRows.filter((trader) => trader.netExposure > 0).length / topTraderRows.length) * 100);
+  const traderDivergenceScore = topTraderRows.length ? Math.round(topTraderRows.reduce((sum, trader) => sum + trader.divergenceIndex, 0) / topTraderRows.length) : 0;
+  const traderNetLongPct = topTraderRows.length ? Math.round((topTraderRows.filter((trader) => trader.netExposure > 0).length / topTraderRows.length) * 100) : 0;
   const traderClusters = deriveTraderClusters(topTraderRows, assetFlows);
   const displayIntelligenceCards = usingLiveData
     ? assetFlows.map((flow) => ({
@@ -978,7 +1288,7 @@ function CrossMarketFlowsWorkspace() {
     traderFilter !== "All Traders" ? traderFilter : null,
     minInflow > 0 ? `Min inflow $${minInflow}M` : null,
     minOiChange > 0 ? `OI >= ${minOiChange}%` : null,
-    minTraderCount !== 20 ? `Traders >= ${minTraderCount}` : null,
+    minTraderCount > 0 ? `Tracked wallets >= ${minTraderCount}` : null,
     abnormalityScore !== "Any Score" ? `Abnormality ${abnormalityScore}` : null,
   ].filter(Boolean);
 
@@ -1009,7 +1319,7 @@ function CrossMarketFlowsWorkspace() {
     setTraderFilter("All Traders");
     setMinInflow(0);
     setMinOiChange(0);
-    setMinTraderCount(20);
+    setMinTraderCount(0);
     setQuery("");
     setAdvancedOpen(false);
   }
@@ -1025,15 +1335,17 @@ function CrossMarketFlowsWorkspace() {
                 {usingLiveData ? (
                   <Badge className="h-6 gap-1.5 rounded-lg border border-emerald-300/18 bg-emerald-300/[0.08] font-mono text-[10px] uppercase text-emerald-100">
                     <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.85)]" />
-                    Live Hyperliquid Data
+                    {liveSourceStatus} Hyperliquid Data
                   </Badge>
                 ) : null}
                 {isLoadingLiveData ? <Badge className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] uppercase text-slate-300">Syncing live feed</Badge> : null}
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white">Hyperliquid Trader Intelligence Terminal</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX answers where smart money is positioning, which assets are attracting conviction, which traders matter most, and which flows may affect prediction market probabilities.</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">OracleX shows live Hyperliquid market positioning, derived flow signals, and the data gaps that require tracked wallet ingestion.</p>
               <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Last updated {formatTimestamp(liveUpdatedAt)}</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">Source status {usingLiveData ? liveSourceStatus : "fallback"} / Refresh {liveRefresh}</p>
               {!usingLiveData && liveDataError ? <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-200">API fallback active: {liveDataError}</p> : null}
+              {liveLimitations.length > 0 ? <p className="mt-1 max-w-3xl font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">{liveLimitations[0]}</p> : null}
             </div>
             <div className="grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
               <span>Hyperliquid</span>
@@ -1049,24 +1361,24 @@ function CrossMarketFlowsWorkspace() {
           <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
             {[
               {
-                label: "Total Smart Money Inflow 7D",
+                label: "Derived Inflow Proxy",
                 value: money(totalSmartMoneyInflow),
-                tooltip: "Net smart-money flow across tracked Hyperliquid assets over the selected timeframe. Uses asset-level flow, open interest change, volume, funding, and positioning signals. It matters because broad flow can precede probability repricing. Refreshes hourly.",
+                tooltip: "Derived proxy from live Hyperliquid volume, price, funding, and open-interest context. It is not wallet-level smart-money inflow until tracked wallet ingestion is added.",
               },
               {
                 label: "Largest Inflow Asset",
-                value: `${largestInflow.asset} ${signedPct(largestInflow.flowVsAvg)} vs avg`,
+                value: `${largestInflow.asset} ${money(largestInflow.netFlow ?? largestInflow.netFlow7d)}`,
                 tooltip: "The asset with the largest positive normalized net flow. Uses Hyperliquid market context, 24h volume intensity, open interest, funding, and price-change proxies. It matters because concentrated inflow can identify conviction assets. Refreshes hourly.",
               },
               {
                 label: "Largest Outflow Asset",
-                value: `${largestOutflow.asset} ${signedPct(largestOutflow.flowVsAvg)} vs avg`,
+                value: `${largestOutflow.asset} ${money(largestOutflow.netFlow ?? largestOutflow.netFlow7d)}`,
                 tooltip: "The asset with the strongest negative normalized net flow. Uses the same asset-level Hyperliquid flow, OI, volume, funding, and positioning inputs. It matters because outflows can flag hedging, de-risking, or short pressure. Refreshes hourly.",
               },
               {
                 label: "Top Trader Net Bias",
-                value: `${topBias.asset} ${topBias.longShortRatio}`,
-                tooltip: "The asset with the strongest inferred smart-money concentration and long/short skew. Uses asset-level positioning proxies until wallet-level ingestion is added. It matters because directional skew can affect related prediction market probabilities. Refreshes hourly.",
+                value: "Unavailable",
+                tooltip: "Hyperliquid does not expose a documented public top-trader leaderboard. Real top-trader net bias requires tracked wallet ingestion.",
               },
               {
                 label: "Open Interest Acceleration",
@@ -1085,7 +1397,7 @@ function CrossMarketFlowsWorkspace() {
                   <InfoTooltip text={metric.tooltip} />
                 </div>
                 <div className="mt-1 truncate font-mono text-sm text-white">{metric.value}</div>
-                <SourceLine source={tableFallbackActive ? "fallback until live mapping is fixed" : usingLiveData ? "Hyperliquid API" : "local fallback dataset"} />
+                <SourceLine source={tableFallbackActive ? "local fallback dataset" : usingLiveData ? `Hyperliquid API (${metric.label === "Top Trader Net Bias" ? "unavailable" : "derived"})` : "local fallback dataset"} refresh={liveRefresh} />
               </div>
             ))}
           </div>
@@ -1127,7 +1439,7 @@ function CrossMarketFlowsWorkspace() {
                 {[
                   ["Min inflow", minInflow, setMinInflow, "M", 0, 50],
                   ["Min OI change", minOiChange, setMinOiChange, "%", 0, 35],
-                  ["Min trader count", minTraderCount, setMinTraderCount, "", 0, 100],
+                  ["Min tracked wallets", minTraderCount, setMinTraderCount, "", 0, 100],
                 ].map(([label, value, setter, suffix, min, max]) => (
                   <label key={label as string} className="rounded-lg border border-white/[0.065] bg-black/25 p-3">
                     <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
@@ -1158,19 +1470,21 @@ function CrossMarketFlowsWorkspace() {
                 </button>
               </div>
             ) : null}
-            <table className="w-full min-w-[1600px] text-left text-xs">
+            <table className="w-full min-w-[1900px] text-left text-xs">
               <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
                 <tr>
                   {[
                     ["Asset", "abnormalFlowIndex"],
+                    ["Mark Price", "abnormalFlowIndex"],
+                    ["Open Interest", "openInterestChange"],
+                    ["OI Change", "openInterestChange"],
+                    ["Funding", "abnormalFlowIndex"],
+                    ["24h Volume", "flowVsAvg"],
                     ["Net Flow", "netFlow7d"],
-                    ["Flow vs 30D Avg", "flowVsAvg"],
-                    ["Top Trader Bias", "abnormalFlowIndex"],
-                    ["Open Interest Change", "openInterestChange"],
                     ["Long/Short Ratio", "abnormalFlowIndex"],
                     ["Avg Leverage", "avgLeverage"],
                     ["Whale Concentration", "whaleScore"],
-                    ["Conviction / Flow Strength", "abnormalFlowIndex"],
+                    ["Abnormal Flow", "abnormalFlowIndex"],
                     ["Last Updated", "abnormalFlowIndex"],
                   ].map(([header, key]) => (
                     <th key={header} className="px-4 py-3 font-medium">
@@ -1182,7 +1496,7 @@ function CrossMarketFlowsWorkspace() {
               <tbody>
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-400">
+                    <td colSpan={12} className="px-4 py-8 text-center text-sm text-slate-400">
                       No assets match the active filters. <button type="button" onClick={clearFilters} className="font-mono text-blue-100 underline underline-offset-4">Clear filters</button>
                     </td>
                   </tr>
@@ -1197,15 +1511,18 @@ function CrossMarketFlowsWorkspace() {
                     className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${selectedTarget.type === "asset" && selectedAssetFlow.asset === flow.asset ? "bg-blue-300/[0.06]" : ""}`}
                   >
                     <td className="px-4 py-3 font-mono text-lg text-white">{flow.asset}</td>
-                    <td className={`px-4 py-3 font-mono ${flow.netFlow7d >= 0 ? "text-emerald-200" : "text-red-200"}`}>{money(flow.netFlow7d)}</td>
-                    <td className={`px-4 py-3 font-mono ${flow.flowVsAvg >= 0 ? "text-emerald-200" : "text-red-200"}`}>{signedPct(flow.flowVsAvg)} vs 30D avg</td>
-                    <td className="px-4 py-3"><BiasBadge bias={directionBias(flow.topTraderBias)} /><div className="mt-1 text-slate-500">{flow.topTraderBias}</div></td>
-                    <td className="px-4 py-3 font-mono text-blue-100">{signedPct(flow.openInterestChange)}</td>
-                    <td className="px-4 py-3 font-mono text-slate-200">{flow.longShortRatio}</td>
-                    <td className="px-4 py-3 font-mono text-slate-200">{flow.avgLeverage.toFixed(1)}x</td>
-                    <td className="px-4 py-3 text-slate-300">{flow.whaleConcentration}</td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{formatPrice(getFlowMarkPrice(flow))}<AvailabilityLabel value={flow.availability?.markPrice} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{formatMarketMoney(getFlowOpenInterestUsd(flow))}<AvailabilityLabel value={flow.availability?.openInterest} /></td>
+                    <td className="px-4 py-3 font-mono text-blue-100">{signedPct(flow.oiChange ?? flow.openInterestChange)}<AvailabilityLabel value={flow.availability?.oiChange} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{formatFunding(getFlowFunding(flow))}<AvailabilityLabel value={flow.availability?.funding} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{formatMarketMoney(getFlowVolume24h(flow))}<AvailabilityLabel value={flow.availability?.volume24h} /></td>
+                    <td className={`px-4 py-3 font-mono ${flow.netFlow7d >= 0 ? "text-emerald-200" : "text-red-200"}`}>{money(flow.netFlow7d)}<AvailabilityLabel value={flow.availability?.netFlow} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{flow.longShortRatio}<AvailabilityLabel value={flow.availability?.longShortRatio} /></td>
+                    <td className="px-4 py-3 font-mono text-slate-200">{flow.avgLeverage.toFixed(1)}x<AvailabilityLabel value={flow.availability?.avgLeverage} /></td>
+                    <td className="px-4 py-3 text-slate-300">{flow.whaleConcentration ?? "Unavailable"}<AvailabilityLabel value={flow.availability?.whaleConcentration} /></td>
                     <td className="px-4 py-3">
                       <div className="font-mono text-blue-100">{flow.abnormalFlowIndex}</div>
+                      <AvailabilityLabel value={flow.availability?.abnormalFlowIndex} />
                       <div className="mt-1 max-w-[220px] text-slate-500">{flow.interpretation}</div>
                     </td>
                     <td className="px-4 py-3 font-mono text-slate-500">{formatTimestamp(liveUpdatedAt)}</td>
@@ -1217,64 +1534,84 @@ function CrossMarketFlowsWorkspace() {
         </Panel>
 
         <Panel>
-          <PanelHeader title="Top Trader Intelligence" action="Smart money positioning layer" />
+          <PanelHeader title="Tracked Whale Intelligence" action={trackedWalletsAvailable ? "OracleX-discovered wallets" : "Requires ingestion"} />
           <CardContent className="space-y-4 p-4">
             <div className="flex flex-col gap-2 border-b border-white/[0.07] pb-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100">TOP TRADER INTELLIGENCE</div>
-                <p className="mt-2 text-sm leading-6 text-slate-400">Track positioning, leverage, conviction, and behavior of top Hyperliquid traders.</p>
-                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">Source: derived trader intelligence placeholder / Future integration: wallet-level Hyperliquid ingestion</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-blue-100">TRACKED WHALE INTELLIGENCE</div>
+                <p className="mt-2 text-sm leading-6 text-slate-400">Ranked from OracleX-discovered Hyperliquid wallets with persisted clearinghouse snapshots. This is not an official Hyperliquid leaderboard.</p>
+                <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">Source: OracleX-discovered Hyperliquid wallets / Method: recentTrades discovery + clearinghouseState enrichment</div>
+                {!trackedWalletsAvailable ? <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">Coming soon / requires persisted wallet snapshots</div> : null}
               </div>
-              <Badge className="h-6 rounded-lg border border-blue-300/18 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">clearinghouseState-ready</Badge>
+              <Badge className="h-6 rounded-lg border border-blue-300/18 bg-blue-300/[0.07] font-mono text-[10px] uppercase text-blue-100">recentTrades + clearinghouseState</Badge>
             </div>
 
             <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
               {[
-                ["Top trader net bias", `${traderNetLongPct}% net long, ${topBias.asset} ${topBias.longShortRatio}`],
-                ["Average leverage", `${avgTraderLeverage.toFixed(1)}x across tracked wallets`],
-                ["High conviction clusters", `${highConvictionCount} high-conviction traders active`],
-                ["Net smart money exposure", money(netSmartMoneyExposure)],
-                ["Top asset concentration", `${topAssetConcentration.asset} ${money(topAssetConcentration.exposure)}`],
-                ["Trader divergence score", `${traderDivergenceScore} Divergence Index™`],
+                ["Discovered Wallets", `${trackedWalletStats.discoveredWallets}`],
+                ["Enriched Wallets", `${trackedWalletStats.enrichedWallets}`],
+                ["Latest Ingest", formatDateTime(trackedWalletStats.latestIngestTime)],
+                ["Discovery Source", "recentTrades"],
+                ["Enrichment Source", "clearinghouseState"],
+                ["Storage", trackedWalletsAvailable ? "Supabase snapshots live" : "Awaiting Supabase snapshots"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-white/[0.065] bg-white/[0.025] px-3 py-2">
                   <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-600">{label}</div>
                   <div className="mt-1 text-xs leading-5 text-white">{value}</div>
+                  <AvailabilityLabel value="derived" />
                 </div>
               ))}
             </div>
 
-            <div className="max-h-[560px] overflow-auto rounded-xl border border-white/[0.07]">
-              <table className="w-full min-w-[1720px] text-left text-xs">
-                <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
-                  <tr>{["Wallet", "Global Rank", "Primary Asset", "Direction", "Net Exposure", "Lifetime PnL", "7D PnL", "Lifetime ROI", "Historical Accuracy", "Win Rate", "Avg Leverage", "Last Activity"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {filteredTopTraderRows.map((trader) => (
-                    <tr
-                      key={trader.wallet}
-                      onClick={() => setSelectedTarget({ type: "trader", trader: trader.wallet })}
-                      className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${selectedTarget.type === "trader" && selectedTarget.trader === trader.wallet ? "bg-blue-300/[0.06]" : ""}`}
-                    >
-                      <td className="px-4 py-3 font-mono text-blue-100">{trader.wallet}</td>
-                      <td className="px-4 py-3 font-mono text-slate-200">#{trader.globalRank}</td>
-                      <td className="px-4 py-3 font-mono text-white">{trader.primaryAsset}</td>
-                      <td className="px-4 py-3 text-slate-200">{trader.direction}</td>
-                      <td className={`px-4 py-3 font-mono ${trader.netExposure >= 0 ? "text-emerald-200" : "text-red-200"}`}>{money(trader.netExposure)}</td>
-                      <td className="px-4 py-3 font-mono text-emerald-200">{moneyFromMillions(trader.lifetimePnl)}</td>
-                      <td className={`px-4 py-3 font-mono ${trader.pnl7d >= 0 ? "text-emerald-200" : "text-red-200"}`}>{money(trader.pnl7d)}</td>
-                      <td className="px-4 py-3 font-mono text-emerald-200">{signedPct(trader.lifetimeRoi)}</td>
-                      <td className="px-4 py-3 font-mono text-blue-100">{trader.historicalAccuracy}%</td>
-                      <td className="px-4 py-3 font-mono text-blue-100">{trader.winRate}%</td>
-                      <td className="px-4 py-3 font-mono text-slate-200">{trader.avgLeverage.toFixed(1)}x</td>
-                      <td className="px-4 py-3 font-mono text-slate-500">{trader.lastActivity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {isLoadingTrackedWallets ? (
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">Loading tracked wallet snapshots...</div>
+              </div>
+            ) : !trackedWalletsAvailable ? (
+              <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4">
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-amber-100">Tracked wallet leaderboard unavailable</div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{trackedWalletError ? `Wallet API unavailable: ${trackedWalletError}` : "Run Hyperliquid ingestion to persist discovered wallets, snapshots, and positions before this table activates."}</p>
+              </div>
+            ) : (
+              <div className="max-h-[560px] overflow-auto rounded-xl border border-white/[0.07]">
+                <table className="w-full min-w-[1320px] text-left text-xs">
+                  <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                    <tr>{["Rank", "Wallet", "Account Value", "Primary Asset", "Direction", "Gross Exposure", "Net Exposure", "Avg Leverage", "Unrealized PnL", "Last Activity"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {visibleTrackedWalletRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-400">No tracked wallets match the active asset filter.</td>
+                      </tr>
+                    ) : null}
+                    {visibleTrackedWalletRows.map((wallet) => (
+                      <tr
+                        key={wallet.wallet}
+                        tabIndex={0}
+                        onClick={() => router.push(`/terminal/flows/wallet/${wallet.wallet}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") router.push(`/terminal/flows/wallet/${wallet.wallet}`);
+                        }}
+                        className="cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] focus:bg-blue-300/[0.055] focus:outline-none"
+                      >
+                        <td className="px-4 py-3 font-mono text-blue-100">#{wallet.rank}</td>
+                        <td className="px-4 py-3 font-mono text-slate-200" title={wallet.wallet}>{truncateWallet(wallet.wallet)}</td>
+                        <td className="px-4 py-3 font-mono text-white">{formatMarketMoney(wallet.accountValue)}</td>
+                        <td className="px-4 py-3 font-mono text-white">{wallet.primaryAsset ?? "None"}</td>
+                        <td className="px-4 py-3 text-slate-200">{wallet.direction}</td>
+                        <td className="px-4 py-3 font-mono text-slate-200">{formatMarketMoney(wallet.grossExposure)}</td>
+                        <td className={`px-4 py-3 font-mono ${wallet.netExposure >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.netExposure)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-200">{wallet.avgLeverage.toFixed(1)}x</td>
+                        <td className={`px-4 py-3 font-mono ${wallet.unrealizedPnl >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.unrealizedPnl)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{formatDateTime(wallet.lastSeenAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            <div className="grid gap-3 xl:grid-cols-2">
+            {topTraderRows.length > 0 ? <div className="grid gap-3 xl:grid-cols-2">
               {filteredTopTraderRows.slice(0, 4).map((trader) => (
                 <div key={`${trader.wallet}-datapoints`} className="rounded-xl border border-white/[0.065] bg-black/25 p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
@@ -1284,14 +1621,19 @@ function CrossMarketFlowsWorkspace() {
                   <div className="space-y-2">{trader.datapoints.slice(0, 2).map((datapoint) => <div key={datapoint} className="rounded-lg bg-white/[0.035] px-3 py-2 text-xs leading-5 text-slate-300">{datapoint}</div>)}</div>
                 </div>
               ))}
-            </div>
+            </div> : null}
           </CardContent>
         </Panel>
 
         <Panel>
-          <PanelHeader title="Trader Cluster Detection" action="Premium intelligence" />
+          <PanelHeader title="Trader Cluster Detection" action="Requires tracked wallet ingestion" />
           <CardContent className="grid gap-3 p-4 xl:grid-cols-2">
-            {traderClusters.map((cluster) => (
+            {traderClusters.length === 0 ? (
+              <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4 xl:col-span-2">
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-amber-100">Unavailable</div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">Trader cluster detection requires tracked Hyperliquid wallet ingestion.</p>
+              </div>
+            ) : traderClusters.map((cluster) => (
               <div key={cluster.title} className="rounded-xl border border-white/[0.07] bg-black/25 p-4">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="text-sm font-semibold text-white">{cluster.title}</div>
@@ -1445,18 +1787,21 @@ function CrossMarketFlowsWorkspace() {
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    ["7D net flow", money(selectedAssetFlow.netFlow7d)],
-                    ["Flow vs average", `${signedPct(selectedAssetFlow.flowVsAvg)} vs 30D`],
-                    ["OI change", signedPct(selectedAssetFlow.openInterestChange)],
-                    ["Top trader bias", selectedAssetFlow.topTraderBias],
-                    ["Long/short ratio", selectedAssetFlow.longShortRatio],
-                    ["Whale concentration", selectedAssetFlow.whaleConcentration],
-                    ["Abnormal Flow Index™", `${selectedAssetFlow.abnormalFlowIndex}`],
-                    ["Capital Rotation Score™", `${selectedAssetFlow.capitalRotationScore}`],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
-                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
-                      <div className="mt-2 text-xs leading-5 text-slate-200">{value}</div>
+                    { label: "Mark price", value: formatPrice(getFlowMarkPrice(selectedAssetFlow)), availability: selectedAssetFlow.availability?.markPrice },
+                    { label: "Open interest", value: formatMarketMoney(getFlowOpenInterestUsd(selectedAssetFlow)), availability: selectedAssetFlow.availability?.openInterest },
+                    { label: "24h volume", value: formatMarketMoney(getFlowVolume24h(selectedAssetFlow)), availability: selectedAssetFlow.availability?.volume24h },
+                    { label: "Funding", value: formatFunding(getFlowFunding(selectedAssetFlow)), availability: selectedAssetFlow.availability?.funding },
+                    { label: "Net flow proxy", value: money(selectedAssetFlow.netFlow7d), availability: selectedAssetFlow.availability?.netFlow },
+                    { label: "OI change proxy", value: signedPct(selectedAssetFlow.openInterestChange), availability: selectedAssetFlow.availability?.oiChange },
+                    { label: "Long/short ratio", value: selectedAssetFlow.longShortRatio, availability: selectedAssetFlow.availability?.longShortRatio },
+                    { label: "Whale concentration", value: selectedAssetFlow.whaleConcentration ?? "Unavailable", availability: selectedAssetFlow.availability?.whaleConcentration },
+                    { label: "Abnormal Flow Index", value: `${selectedAssetFlow.abnormalFlowIndex}`, availability: selectedAssetFlow.availability?.abnormalFlowIndex },
+                    { label: "Capital Rotation Score", value: `${selectedAssetFlow.capitalRotationScore}`, availability: "derived" as const },
+                  ].map((metric) => (
+                    <div key={metric.label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
+                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{metric.label}</div>
+                      <div className="mt-2 text-xs leading-5 text-slate-200">{metric.value}</div>
+                      <AvailabilityLabel value={metric.availability} />
                     </div>
                   ))}
                 </div>
@@ -1465,6 +1810,56 @@ function CrossMarketFlowsWorkspace() {
                   <div className="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-blue-100"><BrainCircuit className="size-4" />AI explanation</div>
                   <p className="text-xs leading-6 text-slate-300">{selectedAssetFlow.aiExplanation}</p>
                 </div>
+              </CardContent>
+            </Panel>
+
+            <Panel>
+              <PanelHeader title="Tracked Whale Exposure" action={selectedAssetFlow.asset} />
+              <CardContent className="space-y-4 p-4">
+                {selectedAssetExposure ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "Long wallets", value: `${selectedAssetExposure.longWalletCount}` },
+                        { label: "Short wallets", value: `${selectedAssetExposure.shortWalletCount}` },
+                        { label: "Long notional", value: formatMarketMoney(selectedAssetExposure.longNotional) },
+                        { label: "Short notional", value: formatMarketMoney(selectedAssetExposure.shortNotional) },
+                        { label: "Net whale bias", value: `${selectedAssetExposure.netNotional >= 0 ? "Long" : "Short"} ${formatMarketMoney(Math.abs(selectedAssetExposure.netNotional))}` },
+                        { label: "Long/short ratio", value: selectedAssetExposure.longShortRatio },
+                      ].map((metric) => (
+                        <div key={metric.label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
+                          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{metric.label}</div>
+                          <div className="mt-2 text-xs leading-5 text-slate-200">{metric.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-3">
+                      {[
+                        ["Top long wallet", selectedAssetExposure.topLongWallets[0]],
+                        ["Top short wallet", selectedAssetExposure.topShortWallets[0]],
+                      ].map(([label, wallet]) => (
+                        <div key={label as string} className="rounded-xl border border-white/[0.065] bg-black/25 p-3">
+                          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label as string}</div>
+                          {wallet ? (
+                            <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                              <span className="font-mono text-blue-100" title={(wallet as TrackedWalletExposureWallet).wallet}>{truncateWallet((wallet as TrackedWalletExposureWallet).wallet)}</span>
+                              <span className="font-mono text-slate-200">{formatMarketMoney((wallet as TrackedWalletExposureWallet).notional)}</span>
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-xs leading-5 text-slate-400">None observed</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">Source: OracleX-discovered Hyperliquid wallets / Method: recentTrades discovery + clearinghouseState enrichment</div>
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-4">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-amber-100">No tracked wallet exposure yet for this asset.</div>
+                  </div>
+                )}
               </CardContent>
             </Panel>
 

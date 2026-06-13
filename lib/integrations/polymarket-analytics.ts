@@ -16,6 +16,8 @@ import { type WalletPosition, type WalletProfile } from "@/lib/wallet-profile-da
 
 const FALCON_URL = "https://narrative.agent.heisenberg.so/api/v2/semantic/retrieve/parameterized";
 const MAX_PAGE_LIMIT = 200;
+const FALCON_LEADERBOARD_PAGE_SIZE = 50;
+const DEFAULT_WALLET_LIMIT = 200;
 
 type FalconAgentId = 556 | 569 | 574 | 575 | 579 | 581 | 584;
 type FalconParams = Record<string, string | null | undefined>;
@@ -49,6 +51,13 @@ export type PredictionMarketAnalyticsData = WalletIntelligenceData & {
     fallbackFields: string[];
     unavailableFields: string[];
   };
+  pagination: {
+    limit: number;
+    offset: number;
+    loadedWallets: number;
+    offsetWorking: boolean;
+    hasMore: boolean;
+  };
 };
 
 export type SmartMoneyConsensusCard = {
@@ -81,8 +90,10 @@ export class FalconAnalyticsError extends Error {
   }
 }
 
-export async function getPredictionMarketAnalytics(): Promise<PredictionMarketAnalyticsData> {
+export async function getPredictionMarketAnalytics({ limit = DEFAULT_WALLET_LIMIT, offset = 0 }: { limit?: number; offset?: number } = {}): Promise<PredictionMarketAnalyticsData> {
   const debug: FalconCallResult[] = [];
+  const walletLimit = clamp(Math.round(limit), 1, DEFAULT_WALLET_LIMIT);
+  const walletOffset = Math.max(0, Math.round(offset));
 
   if (!process.env.POLYMARKET_ANALYTICS_API_KEY) {
     const fallback = fallbackAnalytics("POLYMARKET_ANALYTICS_API_KEY is not configured.");
@@ -90,8 +101,8 @@ export async function getPredictionMarketAnalytics(): Promise<PredictionMarketAn
     return fallback;
   }
 
-  const [hScore, leaderboard, marketInsights] = await Promise.all([
-    falconCall({
+  const [hScorePages, leaderboardPages, marketInsights] = await Promise.all([
+    falconSinglePageCall({
       label: "h-score-leaderboard",
       agentId: 584,
       params: {
@@ -103,13 +114,15 @@ export async function getPredictionMarketAnalytics(): Promise<PredictionMarketAn
         max_total_trades_15d: "5000",
         sort_by: "pnl",
       },
-      limit: 50,
+      limit: walletLimit,
+      offset: 0,
     }),
-    falconCall({
+    falconPagedCall({
       label: "polymarket-leaderboard-30d",
       agentId: 579,
       params: { wallet_address: "ALL", leaderboard_period: "30d" },
-      limit: 50,
+      limit: walletLimit,
+      offset: walletOffset,
     }),
     falconCall({
       label: "polymarket-market-insights",
@@ -126,9 +139,9 @@ export async function getPredictionMarketAnalytics(): Promise<PredictionMarketAn
     }),
   ]);
 
-  debug.push(hScore, leaderboard, marketInsights);
+  debug.push(...hScorePages.calls, ...leaderboardPages.calls, marketInsights);
 
-  const liveWallets = normalizeWallets(hScore.results, leaderboard.results);
+  const liveWallets = normalizeWallets(hScorePages.results, leaderboardPages.results);
   const hasLiveWallets = liveWallets.length > 0;
   validateAnalyticsWalletPair(liveWallets);
   const wallets = hasLiveWallets ? liveWallets : mockWalletIntelligenceData.wallets;
@@ -148,11 +161,18 @@ export async function getPredictionMarketAnalytics(): Promise<PredictionMarketAn
     updatedAt: new Date().toISOString(),
     sourceStatus: {
       source: hasLiveWallets ? "live" : "fallback",
-      label: hasLiveWallets ? "Live Falcon/Heisenberg data with derived OracleX analytics" : "Fallback analytics. Live Falcon data unavailable.",
+      label: hasLiveWallets ? "Live Falcon/Heisenberg data with derived OracleX analytics" : "Demo fallback data. Live Falcon data unavailable.",
       liveFields: hasLiveWallets ? ["wallet addresses", "trader rankings", "PnL", "ROI", "win rate", "volume", "active markets", "h-score"] : [],
       derivedFields: hasLiveWallets ? ["market exposure", "cohort summaries", "smart money consensus", "recent position change labels"] : [],
       fallbackFields: hasLiveWallets ? ["category labels where Falcon omits market taxonomy"] : ["all analytics fields"],
       unavailableFields: [],
+    },
+    pagination: {
+      limit: walletLimit,
+      offset: hasLiveWallets ? 0 : walletOffset,
+      loadedWallets: wallets.length,
+      offsetWorking: hScorePages.offsetWorking,
+      hasMore: hScorePages.hasMore,
     },
   };
 
@@ -204,7 +224,7 @@ export async function getPredictionMarketWalletProfile(wallet: string): Promise<
   const confidence = optionalNumber(walletStats?.statistical_confidence);
   const profile: PredictionMarketWalletProfile = {
     wallet,
-    tag: hasLiveStats ? `H-SCORE-${numberFromAny(rankStats?.rank, 0) || "LIVE"}` : "Unavailable",
+    tag: hasLiveStats ? `Rank #${numberFromAny(rankStats?.rank, 0) || "Live"}` : "Unavailable",
     category,
     cohort: hasLiveStats ? `${category} live wallet profile` : "Unavailable",
     roi,
@@ -333,6 +353,34 @@ async function falconCall({ agentId, params, limit = 50, offset = 0, label }: Fa
   }
 }
 
+async function falconPagedCall(options: FalconCallOptions & { limit: number; offset: number }) {
+  const results: FalconResult[] = [];
+  const calls: FalconCallResult[] = [];
+  let nextOffset = options.offset;
+
+  while (results.length < options.limit) {
+    const pageLimit = Math.min(FALCON_LEADERBOARD_PAGE_SIZE, options.limit - results.length);
+    const call = await falconCall({ ...options, limit: pageLimit, offset: nextOffset, label: `${options.label}@${nextOffset}` });
+    calls.push(call);
+    results.push(...call.results);
+
+    if (!call.ok || call.results.length < pageLimit) break;
+    nextOffset += pageLimit;
+  }
+
+  return { results: dedupeRowsByWallet(results), calls };
+}
+
+async function falconSinglePageCall(options: FalconCallOptions & { limit: number; offset: number }) {
+  const call = await falconCall(options);
+  return {
+    results: dedupeRowsByWallet(call.results),
+    calls: [call],
+    offsetWorking: false,
+    hasMore: false,
+  };
+}
+
 function normalizeWallets(hScoreRows: FalconResult[], leaderboardRows: FalconResult[]): WalletRecord[] {
   const leaderboardByWallet = new Map(leaderboardRows.map((row) => [lowerString(row.address), row]));
 
@@ -347,13 +395,16 @@ function normalizeWallets(hScoreRows: FalconResult[], leaderboardRows: FalconRes
       const winRate = normalizeWinRate(numberFromAny(row.win_rate_pct_15d ?? leaderboard?.win_rate, 0));
       const volume = Math.max(numberFromAny(row.total_volume_15d ?? leaderboard?.total_invested, 0), Math.abs(pnl));
       const activeMarkets = numberFromAny(row.markets_traded_15d ?? leaderboard?.markets_traded, 0);
+      const totalPositions = numberFromAny(row.total_trades_15d ?? leaderboard?.total_trades, activeMarkets);
+      const totalWins = Math.round(totalPositions * (winRate / 100));
+      const totalLosses = Math.max(0, totalPositions - totalWins);
       const category = categoryFromText(`${row.tier ?? ""} ${row.trajectory ?? ""}`);
       const conviction = clamp(Math.round(numberFromAny(row.h_score, 0)), 1, 99);
 
       return {
         rank,
         wallet,
-        tag: `H-SCORE-${rank}`,
+        tag: `Rank #${rank}`,
         category,
         group: `${category} Live H-Score Wallets`,
         pnl,
@@ -376,12 +427,26 @@ function normalizeWallets(hScoreRows: FalconResult[], leaderboardRows: FalconRes
         cluster: `${row.tier ?? "Live"} ${row.trajectory ?? "ranked"} traders`,
         marketType: "Binary",
         positionSize: Math.max(numberFromAny(row.total_volume_15d, 0), numberFromAny(leaderboard?.avg_trade_size, 0)),
-        entries: [`H-Score ${row.h_score ?? "unavailable"}`, `${numberFromAny(row.total_trades_15d ?? leaderboard?.total_trades, 0)} trades`, `${activeMarkets} markets traded`],
+        totalPositions,
+        totalWins,
+        totalLosses,
+        entries: [`H-Score ${row.h_score ?? "unavailable"}`, `${totalPositions} trades`, `${activeMarkets} markets traded`],
         activeMarketsList: [`${activeMarkets} markets traded (market names unavailable)`],
         interpretation: `Live H-Score trader with ${formatMoney(pnl)} 15D PnL, ${roi.toFixed(1)}% ROI, ${winRate}% win rate, and ${activeMarkets} markets traded. Category and position labels are derived because the leaderboard endpoint does not include market taxonomy.`,
       };
     })
     .filter((wallet): wallet is WalletRecord => Boolean(wallet));
+}
+
+function dedupeRowsByWallet(rows: FalconResult[]) {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const wallet = lowerString(row.wallet ?? row.address ?? row.proxy_wallet ?? row.wallet_address);
+    if (!wallet) return true;
+    if (seen.has(wallet)) return false;
+    seen.add(wallet);
+    return true;
+  });
 }
 
 function normalizeConsensus(marketRows: FalconResult[], wallets: WalletRecord[]) {
@@ -458,11 +523,18 @@ function fallbackAnalytics(error?: string): PredictionMarketAnalyticsData {
     updatedAt: new Date().toISOString(),
     sourceStatus: {
       source: "fallback",
-      label: error ? `Fallback analytics: ${error}` : "Fallback analytics.",
+      label: error ? `Demo fallback data. Live Falcon data unavailable: ${error}` : "Demo fallback data. Live Falcon data unavailable.",
       liveFields: [],
       derivedFields: [],
       fallbackFields: ["top traders", "rankings", "wallet addresses", "PnL", "ROI", "win rate", "volume", "positions", "consensus"],
       unavailableFields: [],
+    },
+    pagination: {
+      limit: DEFAULT_WALLET_LIMIT,
+      offset: 0,
+      loadedWallets: mockWalletIntelligenceData.wallets.length,
+      offsetWorking: false,
+      hasMore: false,
     },
   };
 }

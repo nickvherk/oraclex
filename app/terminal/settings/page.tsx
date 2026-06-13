@@ -25,7 +25,7 @@ const billingPlans: BillingPlan[] = [
     price: "$8/month",
     amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
-    description: "Entry-level access to OracleX intelligence previews and event intelligence previews.",
+    description: "Entry-level access to OracleX intelligence previews, event intelligence previews, and access to top 200 live prediction market wallets.",
   },
   {
     plan: "analyst",
@@ -33,7 +33,7 @@ const billingPlans: BillingPlan[] = [
     price: "$24/month",
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
-    description: "Real-time prediction market analytics, market events, and advanced filters.",
+    description: "Real-time prediction market analytics, market events, advanced filters, and access to top 200 live prediction market wallets.",
   },
   {
     plan: "operator",
@@ -41,14 +41,14 @@ const billingPlans: BillingPlan[] = [
     price: "$69/month",
     amountUsd: 69,
     checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
-    description: "Full terminal access, signal monitoring, Hyperliquid flows, alerts, and watchlists.",
+    description: "Full terminal access, signal monitoring, Hyperliquid flows, alerts, watchlists, and access to top 200 live prediction market wallets.",
   },
   {
     plan: "enterprise",
     name: "Enterprise",
     price: "Custom",
     amountUsd: 0,
-    description: "Access to the upcoming Narrative Discovery Engine featuring evidence-backed theme detection, news intelligence, wallet confirmation, and market impact analysis.",
+    description: "Enterprise infrastructure, access to top 200 live prediction market wallets, and expanded wallet universe coming soon.",
   },
 ];
 

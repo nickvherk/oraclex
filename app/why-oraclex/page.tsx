@@ -35,7 +35,7 @@ const fadeUp = {
 
 const metrics = [
   ["2.1M", "daily signals"],
-  ["12,400+", "tracked wallets"],
+  ["12,480", "tracked wallets"],
   ["418", "narrative clusters"],
   ["8.4s", "signal latency"],
 ];

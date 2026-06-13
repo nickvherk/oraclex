@@ -36,6 +36,9 @@ export type WalletRecord = {
   entries: string[];
   activeMarketsList: string[];
   interpretation: string;
+  totalPositions?: number;
+  totalWins?: number;
+  totalLosses?: number;
 };
 
 export type ConsensusInsight = {

@@ -81,7 +81,7 @@ const pipelineSteps = [
     title: "Market telemetry grid",
     metric: "2.1M",
     metricLabel: "daily signals",
-    items: ["1,284 markets monitored", "12,400+ wallets tracked", "418 narrative clusters", "73 liquidity venues"],
+    items: ["1,284 markets monitored", "12,480 wallets tracked", "418 narrative clusters", "73 liquidity venues"],
     Icon: Database,
   },
   {
@@ -106,7 +106,7 @@ const pipelineSteps = [
 
 const pipelineMetrics = [
   ["1,284", "Markets monitored"],
-  ["12,400+", "Smart money wallets"],
+  ["12,480", "Tracked wallet universe"],
   ["2.1M", "Signals processed daily"],
   ["418", "Narrative clusters"],
   ["8.4s", "Average latency"],
@@ -133,7 +133,7 @@ const standardPlans = [
     amountUsd: 8,
     checkoutLink: "https://nowpayments.io/payment/?iid=6361481558&paymentId=6293619537",
     description: "Entry-level access to OracleX intelligence systems.",
-    features: ["Delayed intelligence feed", "Event intelligence previews", "Basic prediction market tracking", "Community access", "Basic confirmation signals"],
+    features: ["Delayed intelligence feed", "Event intelligence previews", "Access to top 200 live prediction market wallets", "Community access", "Basic confirmation signals"],
   },
   {
     plan: "analyst" as Plan,
@@ -142,7 +142,7 @@ const standardPlans = [
     amountUsd: 24,
     checkoutLink: "https://nowpayments.io/payment/?iid=4882285706",
     description: "Advanced intelligence access for active prediction traders.",
-    features: ["Real-time intelligence feed", "Market Events", "Prediction market analytics", "Advanced filtering", "Smart money signals"],
+    features: ["Real-time intelligence feed", "Market Events", "Access to top 200 live prediction market wallets", "Advanced filtering", "Smart money signals"],
     popular: true,
   },
   {
@@ -152,7 +152,7 @@ const standardPlans = [
     amountUsd: 69,
     checkoutLink: "https://nowpayments.io/payment/?iid=5994950303",
     description: "Full intelligence workspace access for high-conviction operators.",
-    features: ["Full terminal access", "Market Events", "Hyperliquid flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
+    features: ["Full terminal access", "Market Events", "Access to top 200 live prediction market wallets", "Hyperliquid flows", "Whale monitoring", "Signal engine", "Advanced alerts", "Custom watchlists", "Early signal systems", "Priority intelligence feeds"],
   },
   {
     plan: "enterprise" as Plan,
@@ -160,12 +160,12 @@ const standardPlans = [
     price: "Custom",
     amountUsd: 0,
     description: "Access to the upcoming Narrative Discovery Engine featuring evidence-backed theme detection, news intelligence, wallet confirmation, and market impact analysis.",
-    features: ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Wallet confirmation", "Market impact analysis", "Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations"],
+    features: ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Access to top 200 live prediction market wallets", "Expanded wallet universe coming soon", "Market impact analysis", "Intelligence APIs", "Webhook systems", "Enterprise feeds", "Dedicated support", "Custom integrations"],
     enterprise: true,
   },
 ];
 
-const enterpriseAccess = ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Wallet confirmation", "Market impact analysis", "Intelligence APIs", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
+const enterpriseAccess = ["Upcoming Narrative Discovery Engine", "Evidence-backed theme detection", "News intelligence", "Access to top 200 live prediction market wallets", "Expanded wallet universe coming soon", "Market impact analysis", "Intelligence APIs", "Smart money infrastructure", "Signal systems", "Webhooks", "Custom integrations", "Dedicated support"];
 
 type HomepagePricingPlan = Extract<Plan, "observer" | "analyst" | "operator">;
 
