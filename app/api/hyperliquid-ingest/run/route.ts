@@ -4,12 +4,16 @@ import { enrichHyperliquidWallet, type HyperliquidWalletProfile } from "@/lib/in
 
 export const dynamic = "force-dynamic";
 
-const MAX_WALLETS_TO_ENRICH = 100;
+const DEFAULT_WALLETS_TO_ENRICH = 100;
+const MAX_WALLETS_TO_ENRICH = 500;
 const ENRICHMENT_CANDIDATE_LIMIT = 1000;
+const STALE_SNAPSHOT_HOURS = 24;
+const ENRICHMENT_ERROR_SAMPLE_LIMIT = 10;
 
 type EnrichmentCandidate = {
   walletAddress: string;
   observedVolumeUsd: number;
+  observedTradeCount: number;
   lastSeenAt: string | null;
   assetsSeen: string[];
   latestSnapshotAt: string | null;
@@ -18,6 +22,7 @@ type EnrichmentCandidate = {
 export async function POST(request: Request) {
   const authError = validateInternalRequest(request);
   if (authError) return authError;
+  const maxEnrich = getMaxEnrich(request);
 
   const supabaseConfigError = getSupabaseConfigError();
   if (supabaseConfigError) {
@@ -65,12 +70,13 @@ export async function POST(request: Request) {
 
   let walletsToEnrich: EnrichmentCandidate[];
   try {
-    walletsToEnrich = await selectWalletsToEnrich(MAX_WALLETS_TO_ENRICH);
+    walletsToEnrich = await selectWalletsToEnrich(maxEnrich);
   } catch (error) {
     console.error("[hyperliquid-ingest] enrichment candidate selection failed", error);
-    walletsToEnrich = discovery.wallets.slice(0, MAX_WALLETS_TO_ENRICH).map((wallet) => ({
+    walletsToEnrich = discovery.wallets.slice(0, maxEnrich).map((wallet) => ({
       walletAddress: wallet.walletAddress,
       observedVolumeUsd: wallet.observedVolumeUsd,
+      observedTradeCount: wallet.observedTradeCount,
       lastSeenAt: wallet.lastSeenAt,
       assetsSeen: wallet.assetsSeen,
       latestSnapshotAt: null,
@@ -103,7 +109,8 @@ export async function POST(request: Request) {
         error: getSafePersistenceError(error),
         discoveredWallets: discovery.wallets.length,
         enrichedWallets: enrichedProfiles.length,
-        enrichmentErrors,
+        enrichmentErrors: enrichmentErrors.length,
+        enrichmentErrorSamples: enrichmentErrors.slice(0, ENRICHMENT_ERROR_SAMPLE_LIMIT),
         stats: discovery.stats,
       },
       { status: 500 },
@@ -115,8 +122,10 @@ export async function POST(request: Request) {
     mode: "persisted",
     discoveredWallets: discovery.wallets.length,
     enrichedWallets: enrichedProfiles.length,
+    maxEnrich,
     enrichmentCandidates: walletsToEnrich.length,
-    enrichmentErrors,
+    enrichmentErrors: enrichmentErrors.length,
+    enrichmentErrorSamples: enrichmentErrors.slice(0, ENRICHMENT_ERROR_SAMPLE_LIMIT),
     stats: discovery.stats,
   });
 }
@@ -139,6 +148,13 @@ function getSupabaseConfigError() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return "SUPABASE_SERVICE_ROLE_KEY missing";
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return "NEXT_PUBLIC_SUPABASE_URL missing";
   return null;
+}
+
+function getMaxEnrich(request: Request) {
+  const url = new URL(request.url);
+  const rawMaxEnrich = Number(url.searchParams.get("maxEnrich") ?? DEFAULT_WALLETS_TO_ENRICH);
+  if (!Number.isFinite(rawMaxEnrich)) return DEFAULT_WALLETS_TO_ENRICH;
+  return Math.max(1, Math.min(Math.floor(rawMaxEnrich), MAX_WALLETS_TO_ENRICH));
 }
 
 function getSafePersistenceError(error: unknown) {
@@ -189,7 +205,7 @@ async function selectWalletsToEnrich(limit: number): Promise<EnrichmentCandidate
   const [{ data: wallets, error: walletsError }, { data: snapshots, error: snapshotsError }] = await Promise.all([
     supabase
       .from("hyperliquid_discovered_wallets")
-      .select("wallet_address, last_seen_at, assets_seen, observed_volume_usd")
+      .select("wallet_address, last_seen_at, assets_seen, observed_trade_count, observed_volume_usd")
       .eq("is_active", true)
       .order("observed_volume_usd", { ascending: false })
       .limit(ENRICHMENT_CANDIDATE_LIMIT),
@@ -217,6 +233,7 @@ async function selectWalletsToEnrich(limit: number): Promise<EnrichmentCandidate
       return {
         walletAddress: wallet.wallet_address,
         observedVolumeUsd: toNumber(wallet.observed_volume_usd),
+        observedTradeCount: toNumber(wallet.observed_trade_count),
         lastSeenAt: typeof wallet.last_seen_at === "string" ? wallet.last_seen_at : null,
         assetsSeen,
         latestSnapshotAt: latestSnapshotByWallet.get(wallet.wallet_address) ?? null,
@@ -274,14 +291,15 @@ async function persistWalletProfiles(profiles: HyperliquidWalletProfile[]) {
 function compareEnrichmentCandidates(a: EnrichmentCandidate, b: EnrichmentCandidate) {
   const aSnapshotAge = getSnapshotAgeHours(a.latestSnapshotAt);
   const bSnapshotAge = getSnapshotAgeHours(b.latestSnapshotAt);
-  const aNeedsRefresh = a.latestSnapshotAt ? 0 : 1;
-  const bNeedsRefresh = b.latestSnapshotAt ? 0 : 1;
+  const aNeedsRefresh = !a.latestSnapshotAt || aSnapshotAge >= STALE_SNAPSHOT_HOURS ? 1 : 0;
+  const bNeedsRefresh = !b.latestSnapshotAt || bSnapshotAge >= STALE_SNAPSHOT_HOURS ? 1 : 0;
 
   return (
+    bNeedsRefresh - aNeedsRefresh ||
     b.observedVolumeUsd - a.observedVolumeUsd ||
+    b.observedTradeCount - a.observedTradeCount ||
     getTimestamp(b.lastSeenAt) - getTimestamp(a.lastSeenAt) ||
     b.assetsSeen.length - a.assetsSeen.length ||
-    bNeedsRefresh - aNeedsRefresh ||
     bSnapshotAge - aSnapshotAge
   );
 }

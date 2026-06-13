@@ -19,7 +19,15 @@ export const HYPERLIQUID_DISCOVERY_ASSETS = [
   "AAVE",
   "WLD",
   "ONDO",
+  "ZEC",
+  "PAXG",
+  "LTC",
+  "TRX",
+  "SUI",
+  "TAO",
 ] as const;
+
+const HYPERLIQUID_RECENT_TRADES_TIMEOUT_MS = 10000;
 
 export type HyperliquidDiscoveryAsset = (typeof HYPERLIQUID_DISCOVERY_ASSETS)[number];
 
@@ -118,19 +126,32 @@ export async function discoverHyperliquidWalletsFromRecentTrades(assets: readonl
 }
 
 async function fetchRecentTrades(coin: string): Promise<HyperliquidRecentTrade[]> {
-  const response = await fetch(HYPERLIQUID_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "recentTrades", coin }),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HYPERLIQUID_RECENT_TRADES_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Hyperliquid recentTrades failed for ${coin} with status ${response.status}.`);
+  try {
+    const response = await fetch(HYPERLIQUID_INFO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "recentTrades", coin }),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid recentTrades failed for ${coin} with status ${response.status}.`);
+    }
+
+    const payload: unknown = await response.json();
+    return Array.isArray(payload) ? payload.filter(isRecord) : [];
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Hyperliquid recentTrades timed out for ${coin}.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload: unknown = await response.json();
-  return Array.isArray(payload) ? payload.filter(isRecord) : [];
 }
 
 function getTradeNotional(trade: HyperliquidRecentTrade) {

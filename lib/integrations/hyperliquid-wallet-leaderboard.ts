@@ -4,6 +4,8 @@ import { normalizeAssetSymbol } from "@/lib/tracked-hyperliquid-assets";
 const MAX_SNAPSHOT_ROWS = 1000;
 const MAX_POSITION_ROWS = 5000;
 const DEFAULT_LIMIT = 50;
+const MAX_LEADERBOARD_LIMIT = 500;
+export const HYPERLIQUID_WALLET_COVERAGE_TARGET = 500;
 
 type WalletRow = {
   wallet_address: string;
@@ -73,13 +75,21 @@ export type HyperliquidAssetExposure = {
 
 export type HyperliquidWalletLeaderboardPayload = {
   source: "oraclex-discovered-hyperliquid-wallets";
+  sourceStatus: "live" | "partial";
   method: "recentTrades discovery + clearinghouseState enrichment";
   officialHyperliquidLeaderboard: false;
   updatedAt: string;
+  warning?: string;
   stats: {
     discoveredWallets: number;
     enrichedWallets: number;
+    targetCoverage: number;
     latestIngestTime: string | null;
+  };
+  pagination: {
+    limit: number;
+    returned: number;
+    total: number;
   };
   wallets: HyperliquidTrackedWallet[];
   assetExposures: HyperliquidAssetExposure[];
@@ -111,7 +121,7 @@ export async function getHyperliquidWalletLeaderboard(asset?: string | null, lim
 
   const latestSnapshots = dedupeLatestSnapshots((snapshots ?? []) as SnapshotRow[]);
   const snapshotWallets = Array.from(latestSnapshots.keys());
-  const positions = await loadLatestPositions(snapshotWallets, latestSnapshots);
+  const { positions, warning } = await loadLatestPositions(snapshotWallets, latestSnapshots);
   const positionsByWallet = groupPositionsByWallet(positions);
   const walletMeta = new Map(((wallets ?? []) as WalletRow[]).map((wallet) => [wallet.wallet_address, wallet]));
 
@@ -127,22 +137,30 @@ export async function getHyperliquidWalletLeaderboard(asset?: string | null, lim
 
   return {
     source: "oraclex-discovered-hyperliquid-wallets",
+    sourceStatus: warning ? "partial" : "live",
     method: "recentTrades discovery + clearinghouseState enrichment",
     officialHyperliquidLeaderboard: false,
     updatedAt: new Date().toISOString(),
+    ...(warning ? { warning } : {}),
     stats: {
       discoveredWallets: discoveredWallets ?? 0,
       enrichedWallets: latestSnapshots.size,
+      targetCoverage: HYPERLIQUID_WALLET_COVERAGE_TARGET,
       latestIngestTime: getLatestSnapshotTime(latestSnapshots),
     },
-    wallets: rankedWallets.slice(0, Math.max(1, Math.min(limit, 200))),
+    pagination: {
+      limit: Math.max(1, Math.min(limit, MAX_LEADERBOARD_LIMIT)),
+      returned: Math.min(rankedWallets.length, Math.max(1, Math.min(limit, MAX_LEADERBOARD_LIMIT))),
+      total: rankedWallets.length,
+    },
+    wallets: rankedWallets.slice(0, Math.max(1, Math.min(limit, MAX_LEADERBOARD_LIMIT))),
     assetExposures,
     selectedAssetExposure: normalizedAsset ? assetExposures.find((exposure) => exposure.asset === normalizedAsset) ?? null : null,
   };
 }
 
-async function loadLatestPositions(wallets: string[], latestSnapshots: Map<string, SnapshotRow>) {
-  if (wallets.length === 0) return [];
+async function loadLatestPositions(wallets: string[], latestSnapshots: Map<string, SnapshotRow>): Promise<{ positions: PositionRow[]; warning?: string }> {
+  if (wallets.length === 0) return { positions: [] };
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -152,9 +170,21 @@ async function loadLatestPositions(wallets: string[], latestSnapshots: Map<strin
     .order("snapshot_at", { ascending: false })
     .limit(MAX_POSITION_ROWS);
 
-  if (error) throw new Error(`Failed to load Hyperliquid positions: ${error.message}`);
+  if (error) {
+    if (latestSnapshots.size > 0) {
+      console.warn("[hyperliquid-wallets] persisted positions unavailable; returning snapshot leaderboard", error.message);
+      return {
+        positions: [],
+        warning: "Live Hyperliquid market enrichment unavailable; showing stored snapshots.",
+      };
+    }
 
-  return ((data ?? []) as PositionRow[]).filter((position) => latestSnapshots.get(position.wallet_address)?.snapshot_at === position.snapshot_at);
+    throw new Error(`Failed to load Hyperliquid positions: ${error.message}`);
+  }
+
+  return {
+    positions: ((data ?? []) as PositionRow[]).filter((position) => latestSnapshots.get(position.wallet_address)?.snapshot_at === position.snapshot_at),
+  };
 }
 
 function dedupeLatestSnapshots(snapshots: SnapshotRow[]) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, Database, Info, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, BrainCircuit, ChevronDown, ChevronLeft, ChevronRight, Database, Info, Search, ShieldAlert, SlidersHorizontal, Waves, X, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { BiasBadge, Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
@@ -22,11 +22,8 @@ const directions = ["Any Direction", "Long", "Short", "Mixed"] as const;
 const leverageRanges = ["Any Leverage", "0-2x", "2-5x", "5x+"] as const;
 const abnormalityScores = ["Any Score", "70+", "80+", "90+"] as const;
 const traderFilters = ["All Traders", "Smart Money Only", "Whale Only", "Profitable Traders Only"] as const;
-const trackedWhaleArchitectureStatus = {
-  discoveredWallets: 0,
-  trackedWallets: 0,
-  latestDiscovery: "Pending first ingestion run",
-};
+const trackedWalletPageSize = 50;
+const trackedWalletTargetCoverage = 500;
 
 type Asset = string;
 type Timeframe = (typeof timeframes)[number];
@@ -210,14 +207,18 @@ type TrackedWalletAssetExposure = {
 
 type HyperliquidWalletsPayload = {
   source?: unknown;
+  sourceStatus?: unknown;
   method?: unknown;
   officialHyperliquidLeaderboard?: unknown;
   updatedAt?: unknown;
+  warning?: unknown;
   stats?: {
     discoveredWallets?: unknown;
     enrichedWallets?: unknown;
+    targetCoverage?: unknown;
     latestIngestTime?: unknown;
   };
+  pagination?: unknown;
   wallets?: unknown;
   assetExposures?: unknown;
   selectedAssetExposure?: unknown;
@@ -1049,9 +1050,11 @@ function CrossMarketFlowsWorkspace() {
   const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
   const [trackedWalletRows, setTrackedWalletRows] = useState<TrackedWalletLeaderboardRow[]>([]);
   const [trackedAssetExposures, setTrackedAssetExposures] = useState<TrackedWalletAssetExposure[]>([]);
-  const [trackedWalletStats, setTrackedWalletStats] = useState({ discoveredWallets: 0, enrichedWallets: 0, latestIngestTime: null as string | null });
+  const [trackedWalletStats, setTrackedWalletStats] = useState({ discoveredWallets: 0, enrichedWallets: 0, targetCoverage: trackedWalletTargetCoverage, latestIngestTime: null as string | null });
   const [trackedWalletError, setTrackedWalletError] = useState<string | null>(null);
+  const [trackedWalletWarning, setTrackedWalletWarning] = useState<string | null>(null);
   const [isLoadingTrackedWallets, setIsLoadingTrackedWallets] = useState(true);
+  const [trackedWalletPage, setTrackedWalletPage] = useState(1);
   const [asset, setAsset] = useState<Asset>("All");
   const [timeframe, setTimeframe] = useState<Timeframe>("7D");
   const [group, setGroup] = useState<TraderGroup>("Top 50");
@@ -1151,7 +1154,7 @@ function CrossMarketFlowsWorkspace() {
       if (!cancelled) setIsLoadingTrackedWallets(true);
 
       try {
-        const response = await fetch("/api/hyperliquid-wallets?limit=50");
+        const response = await fetch("/api/hyperliquid-wallets?limit=500");
         const payload = (await response.json()) as HyperliquidWalletsPayload;
 
         const wallets = Array.isArray(payload.wallets) ? payload.wallets.map(normalizeWalletLeaderboardRow).filter((wallet): wallet is TrackedWalletLeaderboardRow => Boolean(wallet)) : [];
@@ -1168,15 +1171,14 @@ function CrossMarketFlowsWorkspace() {
           setTrackedWalletStats({
             discoveredWallets: numberOrNull(stats.discoveredWallets) ?? 0,
             enrichedWallets: numberOrNull(stats.enrichedWallets) ?? 0,
+            targetCoverage: numberOrNull(stats.targetCoverage) ?? trackedWalletTargetCoverage,
             latestIngestTime: stringOrNull(stats.latestIngestTime),
           });
           setTrackedWalletError(null);
+          setTrackedWalletWarning(stringOrNull(payload.warning));
         }
       } catch (error) {
         if (!cancelled) {
-          setTrackedWalletRows([]);
-          setTrackedAssetExposures([]);
-          setTrackedWalletStats({ discoveredWallets: 0, enrichedWallets: 0, latestIngestTime: null });
           setTrackedWalletError(error instanceof Error ? error.message : "Unable to load tracked Hyperliquid wallets");
         }
       } finally {
@@ -1239,8 +1241,17 @@ function CrossMarketFlowsWorkspace() {
   const selectedAssetFlow = selectedTarget.type === "asset" ? assetFlows.find((flow) => flow.asset === selectedTarget.asset) ?? selectedFlow : selectedFlow;
   const filteredTrackedWalletRows = trackedWalletRows.filter((wallet) => asset === "All" || wallet.primaryAsset === asset || wallet.assetsSeen.includes(asset));
   const visibleTrackedWalletRows = filteredTrackedWalletRows.length > 0 || asset !== "All" ? filteredTrackedWalletRows : trackedWalletRows;
+  const trackedWalletPageCount = Math.max(1, Math.ceil(visibleTrackedWalletRows.length / trackedWalletPageSize));
+  const safeTrackedWalletPage = Math.min(trackedWalletPage, trackedWalletPageCount);
+  const trackedWalletStartIndex = visibleTrackedWalletRows.length === 0 ? 0 : (safeTrackedWalletPage - 1) * trackedWalletPageSize + 1;
+  const trackedWalletEndIndex = Math.min(safeTrackedWalletPage * trackedWalletPageSize, visibleTrackedWalletRows.length);
+  const paginatedTrackedWalletRows = visibleTrackedWalletRows.slice((safeTrackedWalletPage - 1) * trackedWalletPageSize, safeTrackedWalletPage * trackedWalletPageSize);
   const selectedAssetExposure = trackedAssetExposures.find((exposure) => exposure.asset === selectedAssetFlow.asset) ?? null;
   const trackedWalletsAvailable = trackedWalletRows.length > 0 && trackedWalletStats.enrichedWallets > 0;
+
+  useEffect(() => {
+    setTrackedWalletPage(1);
+  }, [asset, trackedWalletRows.length]);
 
   const largestInflow = metricFlows.reduce((best, flow) => (flow.netFlow7d > best.netFlow7d ? flow : best), metricFlows[0]);
   const largestOutflow = metricFlows.reduce((best, flow) => (flow.netFlow7d < best.netFlow7d ? flow : best), metricFlows[0]);
@@ -1550,10 +1561,10 @@ function CrossMarketFlowsWorkspace() {
               {[
                 ["Discovered Wallets", `${trackedWalletStats.discoveredWallets}`],
                 ["Enriched Wallets", `${trackedWalletStats.enrichedWallets}`],
+                ["Target Coverage", `${trackedWalletStats.targetCoverage}`],
                 ["Latest Ingest", formatDateTime(trackedWalletStats.latestIngestTime)],
                 ["Discovery Source", "recentTrades"],
                 ["Enrichment Source", "clearinghouseState"],
-                ["Storage", trackedWalletsAvailable ? "Supabase snapshots live" : "Awaiting Supabase snapshots"],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-white/[0.065] bg-white/[0.025] px-3 py-2">
                   <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-slate-600">{label}</div>
@@ -1562,6 +1573,18 @@ function CrossMarketFlowsWorkspace() {
                 </div>
               ))}
             </div>
+
+            {trackedWalletStats.enrichedWallets > 0 && trackedWalletStats.enrichedWallets < trackedWalletStats.targetCoverage ? (
+              <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-3 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">Coverage building. Run ingestion again to expand tracked wallet universe.</div>
+            ) : null}
+
+            {trackedWalletWarning ? (
+              <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-3 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">{trackedWalletWarning}</div>
+            ) : null}
+
+            {trackedWalletError && trackedWalletsAvailable ? (
+              <div className="rounded-xl border border-amber-200/15 bg-amber-200/[0.04] p-3 font-mono text-[10px] uppercase tracking-[0.12em] text-amber-100">Wallet API refresh unavailable: {trackedWalletError}. Showing last loaded snapshots.</div>
+            ) : null}
 
             {isLoadingTrackedWallets ? (
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
@@ -1573,41 +1596,57 @@ function CrossMarketFlowsWorkspace() {
                 <p className="mt-2 text-sm leading-6 text-slate-300">{trackedWalletError ? `Wallet API unavailable: ${trackedWalletError}` : "Run Hyperliquid ingestion to persist discovered wallets, snapshots, and positions before this table activates."}</p>
               </div>
             ) : (
-              <div className="max-h-[560px] overflow-auto rounded-xl border border-white/[0.07]">
-                <table className="w-full min-w-[1320px] text-left text-xs">
-                  <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
-                    <tr>{["Rank", "Wallet", "Account Value", "Primary Asset", "Direction", "Gross Exposure", "Net Exposure", "Avg Leverage", "Unrealized PnL", "Last Activity"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {visibleTrackedWalletRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-400">No tracked wallets match the active asset filter.</td>
-                      </tr>
-                    ) : null}
-                    {visibleTrackedWalletRows.map((wallet) => (
-                      <tr
-                        key={wallet.wallet}
-                        tabIndex={0}
-                        onClick={() => router.push(`/terminal/flows/wallet/${wallet.wallet}`)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") router.push(`/terminal/flows/wallet/${wallet.wallet}`);
-                        }}
-                        className="cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] focus:bg-blue-300/[0.055] focus:outline-none"
-                      >
-                        <td className="px-4 py-3 font-mono text-blue-100">#{wallet.rank}</td>
-                        <td className="px-4 py-3 font-mono text-slate-200" title={wallet.wallet}>{truncateWallet(wallet.wallet)}</td>
-                        <td className="px-4 py-3 font-mono text-white">{formatMarketMoney(wallet.accountValue)}</td>
-                        <td className="px-4 py-3 font-mono text-white">{wallet.primaryAsset ?? "None"}</td>
-                        <td className="px-4 py-3 text-slate-200">{wallet.direction}</td>
-                        <td className="px-4 py-3 font-mono text-slate-200">{formatMarketMoney(wallet.grossExposure)}</td>
-                        <td className={`px-4 py-3 font-mono ${wallet.netExposure >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.netExposure)}</td>
-                        <td className="px-4 py-3 font-mono text-slate-200">{wallet.avgLeverage.toFixed(1)}x</td>
-                        <td className={`px-4 py-3 font-mono ${wallet.unrealizedPnl >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.unrealizedPnl)}</td>
-                        <td className="px-4 py-3 font-mono text-slate-500">{formatDateTime(wallet.lastSeenAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="rounded-xl border border-white/[0.07]">
+                <div className="flex flex-col gap-2 border-b border-white/[0.07] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500 md:flex-row md:items-center md:justify-between">
+                  <span>Showing {trackedWalletStartIndex}-{trackedWalletEndIndex} of {visibleTrackedWalletRows.length} enriched wallets</span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setTrackedWalletPage((page) => Math.max(1, page - 1))} disabled={safeTrackedWalletPage <= 1} className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/[0.08] px-2 text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+                      <ChevronLeft className="size-3.5" />
+                      Previous
+                    </button>
+                    <span className="text-slate-400">Page {safeTrackedWalletPage} of {trackedWalletPageCount}</span>
+                    <button type="button" onClick={() => setTrackedWalletPage((page) => Math.min(trackedWalletPageCount, page + 1))} disabled={safeTrackedWalletPage >= trackedWalletPageCount} className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/[0.08] px-2 text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40">
+                      Next
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-[560px] overflow-auto">
+                  <table className="w-full min-w-[1320px] text-left text-xs">
+                    <thead className="border-b border-white/[0.075] bg-white/[0.025] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                      <tr>{["Rank", "Wallet", "Account Value", "Primary Asset", "Direction", "Gross Exposure", "Net Exposure", "Avg Leverage", "Unrealized PnL", "Last Activity"].map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {visibleTrackedWalletRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-400">No tracked wallets match the active asset filter.</td>
+                        </tr>
+                      ) : null}
+                      {paginatedTrackedWalletRows.map((wallet) => (
+                        <tr
+                          key={wallet.wallet}
+                          tabIndex={0}
+                          onClick={() => router.push(`/terminal/flows/wallet/${wallet.wallet}`)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") router.push(`/terminal/flows/wallet/${wallet.wallet}`);
+                          }}
+                          className="cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] focus:bg-blue-300/[0.055] focus:outline-none"
+                        >
+                          <td className="px-4 py-3 font-mono text-blue-100">#{wallet.rank}</td>
+                          <td className="px-4 py-3 font-mono text-slate-200" title={wallet.wallet}>{truncateWallet(wallet.wallet)}</td>
+                          <td className="px-4 py-3 font-mono text-white">{formatMarketMoney(wallet.accountValue)}</td>
+                          <td className="px-4 py-3 font-mono text-white">{wallet.primaryAsset ?? "None"}</td>
+                          <td className="px-4 py-3 text-slate-200">{wallet.direction}</td>
+                          <td className="px-4 py-3 font-mono text-slate-200">{formatMarketMoney(wallet.grossExposure)}</td>
+                          <td className={`px-4 py-3 font-mono ${wallet.netExposure >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.netExposure)}</td>
+                          <td className="px-4 py-3 font-mono text-slate-200">{wallet.avgLeverage.toFixed(1)}x</td>
+                          <td className={`px-4 py-3 font-mono ${wallet.unrealizedPnl >= 0 ? "text-emerald-200" : "text-red-200"}`}>{formatMarketMoney(wallet.unrealizedPnl)}</td>
+                          <td className="px-4 py-3 font-mono text-slate-500">{formatDateTime(wallet.lastSeenAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

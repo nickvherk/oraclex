@@ -20,13 +20,20 @@ export async function GET(request: Request) {
     return Response.json(
       {
         source: "oraclex-discovered-hyperliquid-wallets",
+        sourceStatus: "partial",
         method: "recentTrades discovery + clearinghouseState enrichment",
         officialHyperliquidLeaderboard: false,
         updatedAt: new Date().toISOString(),
         stats: {
           discoveredWallets: 0,
           enrichedWallets: 0,
+          targetCoverage: 500,
           latestIngestTime: null,
+        },
+        pagination: {
+          limit: 0,
+          returned: 0,
+          total: 0,
         },
         wallets: [],
         assetExposures: [],
