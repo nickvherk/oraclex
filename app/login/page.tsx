@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Lock, Mail, Network, ShieldCheck, Terminal } from "lucide-react";
+import { ArrowRight, Lock, Mail, ShieldCheck, Terminal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { OracleXLogoMark } from "@/components/oraclex-logo-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMockPlan, loginWithSupabase, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
@@ -75,9 +76,7 @@ export default function LoginPage() {
           <div className="border-b border-white/[0.075] bg-white/[0.025] px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl border border-blue-300/25 bg-blue-300/[0.075] text-blue-200">
-                  <Network className="size-5" />
-                </span>
+                <OracleXLogoMark className="size-9" />
                 <div>
                   <div className="text-sm font-semibold tracking-[-0.01em]">OracleX</div>
                   <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">Terminal Login</div>

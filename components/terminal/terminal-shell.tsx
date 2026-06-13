@@ -11,7 +11,6 @@ import {
   Layers,
   LogOut,
   Lock,
-  Network,
   Plug,
   Radio,
   Settings,
@@ -26,6 +25,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { OracleXLogoMark } from "@/components/oraclex-logo-mark";
 import { LockedAccessScreen } from "@/components/terminal/access-gate";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,22 +147,6 @@ export function SeverityBadge({ severity }: { severity: string }) {
   return <Badge className={`h-6 rounded-lg border px-2 font-mono text-[10px] uppercase ${tone}`}>{severity}</Badge>;
 }
 
-function OracleXLogoMark({ className = "size-9 rounded-xl" }: { className?: string }) {
-  return (
-    <span className={`relative grid shrink-0 place-items-center overflow-hidden border border-blue-300/25 bg-blue-300/[0.075] text-blue-200 ${className}`}>
-      <Network className="size-5" />
-      <img
-        src="/oraclex-logo.png"
-        alt="OracleX"
-        className="absolute inset-0 size-full object-contain p-1.5"
-        onError={(event) => {
-          event.currentTarget.style.display = "none";
-        }}
-      />
-    </span>
-  );
-}
-
 function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -278,7 +262,7 @@ export function TerminalShell({ children }: { children: React.ReactNode }) {
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-[72px] shrink-0 items-center gap-4 border-b border-white/[0.075] bg-black/45 px-4 backdrop-blur-xl lg:px-6">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <OracleXLogoMark className="size-9 rounded-xl xl:hidden" />
+              <OracleXLogoMark className="size-8 xl:hidden" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold tracking-[-0.01em]">
                   <Terminal className="size-4 text-blue-200" />

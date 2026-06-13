@@ -10,7 +10,6 @@ import {
   CircleDot,
   Database,
   Gauge,
-  Globe2,
   Lock,
   Mail,
   RadioTower,
@@ -25,6 +24,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { OracleXLogoMark } from "@/components/oraclex-logo-mark";
 import { PublicHeader } from "@/components/public-header";
 import { getMockPlan, loginWithSupabase, Plan, saveMockSession, signUpWithSupabase } from "@/lib/access-control";
 
@@ -962,7 +962,7 @@ export default function Home() {
         <footer className="border-t border-white/[0.075] px-4 py-9 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-7xl flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-sm font-semibold text-white">
-              <Globe2 className="size-4 text-blue-200" />
+              <OracleXLogoMark className="size-8 sm:size-9" />
               OracleX
             </div>
             <div className="flex flex-wrap gap-5 text-xs font-medium text-slate-500">
