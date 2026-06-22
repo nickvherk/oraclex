@@ -97,7 +97,13 @@ export type HyperliquidWalletLeaderboardPayload = {
 };
 
 export async function getHyperliquidWalletLeaderboard(asset?: string | null, limit = DEFAULT_LIMIT): Promise<HyperliquidWalletLeaderboardPayload> {
-  const supabase = createSupabaseAdminClient();
+  let supabase: ReturnType<typeof createSupabaseAdminClient>;
+  try {
+    supabase = createSupabaseAdminClient();
+  } catch (error) {
+    throw new Error(getSupabaseWalletStorageError(error));
+  }
+
   const normalizedAsset = asset ? normalizeAssetSymbol(asset) ?? asset.toUpperCase() : null;
 
   const [{ count: discoveredWallets, error: countError }, { data: wallets, error: walletsError }, { data: snapshots, error: snapshotsError }] = await Promise.all([
@@ -115,13 +121,14 @@ export async function getHyperliquidWalletLeaderboard(asset?: string | null, lim
       .limit(MAX_SNAPSHOT_ROWS),
   ]);
 
-  if (countError) throw new Error(`Failed to count Hyperliquid discovered wallets: ${countError.message}`);
-  if (walletsError) throw new Error(`Failed to load Hyperliquid discovered wallets: ${walletsError.message}`);
-  if (snapshotsError) throw new Error(`Failed to load Hyperliquid wallet snapshots: ${snapshotsError.message}`);
+  if (walletsError) throw new Error(getSupabaseWalletStorageError(walletsError, "Failed to load Hyperliquid discovered wallets"));
+  if (snapshotsError) throw new Error(getSupabaseWalletStorageError(snapshotsError, "Failed to load Hyperliquid wallet snapshots"));
 
   const latestSnapshots = dedupeLatestSnapshots((snapshots ?? []) as SnapshotRow[]);
   const snapshotWallets = Array.from(latestSnapshots.keys());
+  const countWarning = countError ? `Hyperliquid discovered wallet count unavailable; showing persisted rows. ${countError.message}` : null;
   const { positions, warning } = await loadLatestPositions(snapshotWallets, latestSnapshots);
+  const warnings = [countWarning, warning].filter((item): item is string => Boolean(item));
   const positionsByWallet = groupPositionsByWallet(positions);
   const walletMeta = new Map(((wallets ?? []) as WalletRow[]).map((wallet) => [wallet.wallet_address, wallet]));
 
@@ -137,13 +144,13 @@ export async function getHyperliquidWalletLeaderboard(asset?: string | null, lim
 
   return {
     source: "oraclex-discovered-hyperliquid-wallets",
-    sourceStatus: warning ? "partial" : "live",
+    sourceStatus: warnings.length > 0 ? "partial" : "live",
     method: "recentTrades discovery + clearinghouseState enrichment",
     officialHyperliquidLeaderboard: false,
     updatedAt: new Date().toISOString(),
-    ...(warning ? { warning } : {}),
+    ...(warnings.length > 0 ? { warning: warnings.join(" ") } : {}),
     stats: {
-      discoveredWallets: discoveredWallets ?? 0,
+      discoveredWallets: discoveredWallets ?? Math.max(((wallets ?? []) as WalletRow[]).length, latestSnapshots.size),
       enrichedWallets: latestSnapshots.size,
       targetCoverage: HYPERLIQUID_WALLET_COVERAGE_TARGET,
       latestIngestTime: getLatestSnapshotTime(latestSnapshots),
@@ -179,12 +186,27 @@ async function loadLatestPositions(wallets: string[], latestSnapshots: Map<strin
       };
     }
 
-    throw new Error(`Failed to load Hyperliquid positions: ${error.message}`);
+    throw new Error(getSupabaseWalletStorageError(error, "Failed to load Hyperliquid positions"));
   }
 
   return {
     positions: ((data ?? []) as PositionRow[]).filter((position) => latestSnapshots.get(position.wallet_address)?.snapshot_at === position.snapshot_at),
   };
+}
+
+function getSupabaseWalletStorageError(error: unknown, prefix?: string) {
+  const message = error instanceof Error ? error.message : typeof error === "object" && error !== null && "message" in error && typeof error.message === "string" ? error.message : "";
+  const normalized = message.toLowerCase();
+  const storageUnavailable =
+    normalized.includes("fetch failed") ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("network") ||
+    normalized.includes("supabase") ||
+    normalized.includes("missing next_public_supabase_url") ||
+    normalized.includes("supabase_service_role_key");
+
+  if (storageUnavailable) return "Supabase wallet storage unavailable";
+  return prefix && message ? `${prefix}: ${message}` : message || "Supabase wallet storage unavailable";
 }
 
 function dedupeLatestSnapshots(snapshots: SnapshotRow[]) {

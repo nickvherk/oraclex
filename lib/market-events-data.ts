@@ -1,4 +1,5 @@
 import {
+  filterUpcomingMarketEvents,
   MARKET_EVENT_REFRESH_INTERVAL_HOURS,
   StaticMarketEventFeed,
   type LiveCatalyst,
@@ -7,10 +8,29 @@ import {
 
 export const marketEventsRefreshLabel = `${MARKET_EVENT_REFRESH_INTERVAL_HOURS}h refresh`;
 
-export const upcomingEvents: MarketEvent[] = [
+function formatEventDate(dateValue: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${dateValue}T12:00:00Z`));
+}
+
+function getNextWeekdayDateValue(targetWeekday: number, now = new Date()) {
+  const current = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const delta = (targetWeekday - current.getUTCDay() + 7) % 7;
+  current.setUTCDate(current.getUTCDate() + delta);
+  return current.toISOString().slice(0, 10);
+}
+
+const nextJoblessClaimsDate = getNextWeekdayDateValue(4);
+
+const scheduledMarketEvents: MarketEvent[] = [
   {
     event: "US Nonfarm Payrolls",
-    date: "June 5, 2026",
+    dateValue: "2026-07-02",
+    date: formatEventDate("2026-07-02"),
     time: "08:30 ET",
     region: "US",
     importance: "Critical",
@@ -23,7 +43,8 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "US CPI Inflation Release",
-    date: "June 10, 2026",
+    dateValue: "2026-07-14",
+    date: formatEventDate("2026-07-14"),
     time: "08:30 ET",
     region: "US",
     importance: "Critical",
@@ -35,21 +56,23 @@ export const upcomingEvents: MarketEvent[] = [
     why: "Can rapidly reprice Fed expectations and crypto volatility.",
   },
   {
-    event: "US 10Y Treasury Auction",
-    date: "June 10, 2026",
-    time: "13:00 ET expected",
+    event: "US Treasury Coupon Auction Window",
+    dateValue: null,
+    date: "Date TBA",
+    time: "Auction time TBA",
     region: "US",
     importance: "High",
     affected: ["10Y yield closes above 4.75%", "Fed cuts rates at next meeting", "BTC breaks ATH this quarter"],
     type: "Rates",
-    source: "Treasury Auction Schedule",
-    sourceUrl: "https://home.treasury.gov/system/files/221/TentativeAuctionScheduleQ22026.pdf",
+    source: "TreasuryDirect Upcoming Auctions",
+    sourceUrl: "https://www.treasurydirect.gov/auctions/upcoming/",
     sourceKind: "economic-calendar",
-    why: "Auction tails or weak demand can pressure duration, risk assets, and macro prediction markets.",
+    why: "Auction announcements and tails can pressure duration, risk assets, and macro prediction markets.",
   },
   {
     event: "US PPI Inflation Release",
-    date: "June 11, 2026",
+    dateValue: "2026-07-15",
+    date: formatEventDate("2026-07-15"),
     time: "08:30 ET",
     region: "US",
     importance: "High",
@@ -62,7 +85,8 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "Initial Jobless Claims",
-    date: "June 4, 2026",
+    dateValue: nextJoblessClaimsDate,
+    date: formatEventDate(nextJoblessClaimsDate),
     time: "08:30 ET expected",
     region: "US",
     importance: "Medium",
@@ -75,7 +99,8 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "FOMC Rate Decision",
-    date: "June 17, 2026",
+    dateValue: "2026-07-29",
+    date: formatEventDate("2026-07-29"),
     time: "14:00 ET",
     region: "US",
     importance: "Critical",
@@ -88,7 +113,8 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "Fed Chair Press Conference",
-    date: "June 17, 2026",
+    dateValue: "2026-07-29",
+    date: formatEventDate("2026-07-29"),
     time: "14:30 ET expected",
     region: "US",
     importance: "High",
@@ -101,6 +127,7 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "SOL ETF SEC Review Window",
+    dateValue: null,
     date: "Q3 2026 review window",
     time: "Regulatory window",
     region: "US",
@@ -114,6 +141,7 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "NVIDIA Q2 FY2027 Earnings Window",
+    dateValue: null,
     date: "Late August 2026 expected",
     time: "Post-market expected",
     region: "US",
@@ -127,6 +155,7 @@ export const upcomingEvents: MarketEvent[] = [
   },
   {
     event: "US Midterm Election",
+    dateValue: "2026-11-03",
     date: "November 3, 2026",
     time: "Election day",
     region: "US",
@@ -139,6 +168,12 @@ export const upcomingEvents: MarketEvent[] = [
     why: "Election-control probabilities can move fiscal, regulatory, crypto, and geopolitical policy markets.",
   },
 ];
+
+export function getUpcomingMarketEvents(now = new Date()) {
+  return filterUpcomingMarketEvents(scheduledMarketEvents, now);
+}
+
+export const upcomingEvents: MarketEvent[] = getUpcomingMarketEvents();
 
 export const liveCatalysts: LiveCatalyst[] = [
   {
@@ -186,42 +221,42 @@ export const liveCatalysts: LiveCatalyst[] = [
     watchNext: ["White House briefing language", "Iran response", "oil volatility", "defense-sector relative strength", "crypto liquidity reaction"],
   },
   {
-    title: "June Fed Repricing Window",
+    title: "July Fed Repricing Window",
     category: "Macro / Rates",
     importance: "Critical",
     lastUpdate: "1 hour ago",
-    latestDevelopment: "NFP, CPI, PPI, Treasury supply, and the June FOMC decision cluster into a two-week macro repricing window.",
+    latestDevelopment: "NFP, CPI, PPI, Treasury supply, and the July FOMC decision cluster into the next macro repricing window.",
     source: "Federal Reserve",
     sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
     timeline: [
       {
         time: "1h ago",
-        headline: "June 16-17 FOMC meeting remains the anchor event for rate-cut probabilities.",
+        headline: "July 28-29 FOMC meeting is the next anchor event for rate-cut probabilities.",
         source: "Federal Reserve",
         sourceUrl: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
       },
       {
         time: "3h ago",
-        headline: "June 10 CPI date keeps inflation risk concentrated before the Fed decision.",
+        headline: "July 14 CPI date keeps inflation risk concentrated before the Fed decision.",
         source: "BLS",
         sourceUrl: "https://www.bls.gov/schedule/news_release/cpi.htm",
       },
       {
         time: "6h ago",
-        headline: "June 10 10Y auction adds duration-supply risk to CPI day.",
+        headline: "TreasuryDirect upcoming auctions remain the source for the next coupon supply window.",
         source: "US Treasury",
-        sourceUrl: "https://home.treasury.gov/system/files/221/TentativeAuctionScheduleQ22026.pdf",
+        sourceUrl: "https://www.treasurydirect.gov/auctions/upcoming/",
       },
       {
         time: "1d ago",
-        headline: "Payrolls on June 5 opens the labor-market leg of the repricing window.",
+        headline: "July 2 payrolls opens the labor-market leg of the repricing window.",
         source: "BLS",
         sourceUrl: "https://www.bls.gov/schedule/news_release/empsit.htm",
       },
     ],
     affectedMarkets: ["Fed cuts rates at next meeting", "BTC breaks ATH this quarter", "10Y yield closes above 4.75%", "US recession in 2026"],
     oracleXAssessment: "Macro conditions remain unsupportive despite narrative acceleration.",
-    why: "The June data cluster can reset liquidity expectations faster than crypto-native catalysts.",
+    why: "The July data cluster can reset liquidity expectations faster than crypto-native catalysts.",
     historicalImpact: ["Similar CPI/FOMC clusters increased BTC volatility within 24h of the first inflation print.", "Similar Treasury auction tails pushed rate-sensitive prediction markets toward tighter policy outcomes.", "Similar NFP surprises moved recession and rate-cut probabilities before equity-market confirmation."],
     reactions: ["Rate-cut probability compression", "Higher BTC implied volatility", "Rotation from crypto beta into macro hedges"],
     narratives: ["Fed path", "Inflation persistence", "Treasury supply"],

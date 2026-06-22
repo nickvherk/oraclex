@@ -13,6 +13,7 @@ export type MarketEventSourceKind =
 export interface MarketEvent {
   event: string;
   date: string;
+  dateValue: string | null;
   time: string;
   region: string;
   importance: MarketEventImportance;
@@ -100,6 +101,23 @@ export function shouldRefreshMarketEvents(lastRefreshAt: Date | null, now = new 
   return now.getTime() - lastRefreshAt.getTime() >= MARKET_EVENT_REFRESH_INTERVAL_MS;
 }
 
+export function filterUpcomingMarketEvents(events: MarketEvent[], now = new Date()) {
+  const startOfTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+  return events
+    .filter((event) => {
+      if (!event.dateValue) return true;
+      const eventTime = new Date(`${event.dateValue}T23:59:59.999Z`).getTime();
+      return Number.isFinite(eventTime) && eventTime >= startOfTodayUtc;
+    })
+    .sort((a, b) => {
+      if (!a.dateValue && !b.dateValue) return a.event.localeCompare(b.event);
+      if (!a.dateValue) return 1;
+      if (!b.dateValue) return -1;
+      return a.dateValue.localeCompare(b.dateValue);
+    });
+}
+
 export async function ingestMarketEvents({
   calendarFeeds,
   catalystFeeds,
@@ -125,7 +143,7 @@ export async function ingestMarketEvents({
   return {
     refreshedAt: now.toISOString(),
     nextRefreshAt: nextRefreshAt.toISOString(),
-    events: eventGroups.flat(),
+    events: filterUpcomingMarketEvents(eventGroups.flat(), now),
     catalysts: catalystGroups.flat(),
   };
 }

@@ -2,9 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Activity, AlertOctagon, AlertTriangle, BellRing, Check, CircleDot, Gauge, History, Info, Radio, ShieldAlert, Wallet, Waves, X, Zap } from "lucide-react";
+import { Activity, AlertOctagon, AlertTriangle, BellRing, Check, CircleDot, Gauge, History, Info, Lock, Radio, ShieldAlert, Wallet, Waves, X, Zap } from "lucide-react";
 
-import { FeatureGate } from "@/components/terminal/access-gate";
 import { Panel, PanelHeader } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -266,9 +265,18 @@ function SourceBreakdown({ sources }: { sources: Array<[string, boolean]> }) {
 
 export default function SignalsPage() {
   return (
-    <FeatureGate feature="signalMonitor" explanation="Signal Monitor, whale monitoring, advanced alerts, and early signal systems require Operator access or higher.">
-      <SignalsWorkspace />
-    </FeatureGate>
+    <Panel>
+      <CardContent className="grid min-h-[68vh] place-items-center p-6">
+        <div className="max-w-md text-center">
+          <div className="mx-auto grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.035] text-blue-100">
+            <Lock className="size-5" />
+          </div>
+          <Badge className="mt-5 h-6 rounded-lg border border-white/[0.07] bg-white/[0.035] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-300">Coming Soon</Badge>
+          <h1 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-white">Signal Monitor is locked</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">Advanced signal monitoring is not available for public users yet. The route remains reserved while OracleX prepares the public release.</p>
+        </div>
+      </CardContent>
+    </Panel>
   );
 }
 

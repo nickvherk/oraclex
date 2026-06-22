@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, BarChart3, CalendarClock, CheckCircle2, CircleDot, Clock, ExternalLink, Globe2, Landmark, RadioTower, Wallet, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -8,7 +8,8 @@ import { FeatureGate } from "@/components/terminal/access-gate";
 import { Panel, PanelHeader, SeverityBadge } from "@/components/terminal/terminal-shell";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
-import { liveCatalysts, marketEventsRefreshLabel, upcomingEvents } from "@/lib/market-events-data";
+import { liveCatalysts, marketEventsRefreshLabel, getUpcomingMarketEvents } from "@/lib/market-events-data";
+import { MARKET_EVENT_REFRESH_INTERVAL_MS } from "@/lib/integrations/market-events";
 
 const marketImpact = [
   { market: "SOL ETF approved in 2026", catalyst: "SEC review window / issuer amendments", probability: "+6.4 pts divergence", risk: "High" },
@@ -34,11 +35,18 @@ export default function EventsPage() {
 
 function MarketEventsWorkspace() {
   const [selectedTitle, setSelectedTitle] = useState(liveCatalysts[1].title);
+  const [eventsRefreshedAt, setEventsRefreshedAt] = useState(() => new Date());
+  const upcomingEvents = useMemo(() => getUpcomingMarketEvents(eventsRefreshedAt), [eventsRefreshedAt]);
   const selected = liveCatalysts.find((event) => event.title === selectedTitle) ?? liveCatalysts[0];
   const detailSections: Array<[string, string[], LucideIcon]> = [
     ["Affected Markets", selected.affectedMarkets, Landmark],
     ["Related Narrative Intelligence", selected.narratives, Globe2],
   ];
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setEventsRefreshedAt(new Date()), MARKET_EVENT_REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -50,7 +58,7 @@ function MarketEventsWorkspace() {
         </section>
 
         <Panel>
-          <PanelHeader title="Upcoming Events" action={marketEventsRefreshLabel} />
+          <PanelHeader title="Upcoming Events" action={`${marketEventsRefreshLabel} / as of ${eventsRefreshedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`} />
           <CardContent className="overflow-x-auto p-0">
             <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-left text-xs">
               <thead>

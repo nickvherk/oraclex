@@ -15,7 +15,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Hyperliquid wallet leaderboard error.";
+    const rawMessage = error instanceof Error ? error.message : "Unknown Hyperliquid wallet leaderboard error.";
+    const storageUnavailable = rawMessage === "Supabase wallet storage unavailable";
+    const message = storageUnavailable ? "Supabase wallet storage unavailable" : rawMessage;
 
     return Response.json(
       {
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
         selectedAssetExposure: null,
         error: message,
       },
-      { status: 500 },
+      { status: storageUnavailable ? 503 : 500 },
     );
   }
 }
