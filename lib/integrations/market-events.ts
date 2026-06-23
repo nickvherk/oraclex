@@ -1,5 +1,6 @@
-export const MARKET_EVENT_REFRESH_INTERVAL_HOURS = 24;
-export const MARKET_EVENT_REFRESH_INTERVAL_MS = MARKET_EVENT_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000;
+export const MARKET_EVENT_REFRESH_INTERVAL_MINUTES = 30;
+export const MARKET_EVENT_REFRESH_INTERVAL_MS = MARKET_EVENT_REFRESH_INTERVAL_MINUTES * 60 * 1000;
+export const MARKET_EVENT_REFRESH_INTERVAL_HOURS = MARKET_EVENT_REFRESH_INTERVAL_MINUTES / 60;
 
 export type MarketEventImportance = "Critical" | "High" | "Medium" | "Low";
 
@@ -30,6 +31,7 @@ export interface CatalystDevelopment {
   headline: string;
   source: string;
   sourceUrl: string;
+  timestamp?: string;
 }
 
 export interface LiveCatalyst {
@@ -40,6 +42,9 @@ export interface LiveCatalyst {
   latestDevelopment: string;
   source: string;
   sourceUrl: string;
+  summary?: string;
+  timestamp?: string;
+  confidence?: "High" | "Medium" | "Low";
   timeline: CatalystDevelopment[];
   affectedMarkets: string[];
   oracleXAssessment: string;
