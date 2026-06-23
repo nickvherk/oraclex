@@ -47,10 +47,12 @@ function signed(value: number) {
 }
 
 function probability(value: number) {
+  if (!Number.isFinite(value)) return "Unavailable";
   return `${value.toFixed(1)}%`;
 }
 
 function divergence(market: Pick<MarketWorkspaceMarket, "oracleProbability" | "probability">) {
+  if (!Number.isFinite(market.oracleProbability) || !Number.isFinite(market.probability)) return 0;
   return market.oracleProbability - market.probability;
 }
 
@@ -60,6 +62,33 @@ function formatUsd(value: number) {
   if (abs >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
   if (abs >= 1000) return `$${(value / 1000).toFixed(1)}K`;
   return `$${value.toFixed(0)}`;
+}
+
+function formatTimestamp(value?: string) {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Not available";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function refreshLabel(hours?: number) {
+  if (!hours) return "15m";
+  if (hours < 1) return `${Math.round(hours * 60)}m`;
+  return `${hours}h`;
+}
+
+function isCatalystRow(market: MarketWorkspaceMarket) {
+  return market.rowKind === "catalyst" || !Number.isFinite(market.probability) || !Number.isFinite(market.oracleProbability);
+}
+
+function affectedMarketsLabel(market: MarketWorkspaceMarket) {
+  return market.affectedMarkets?.slice(0, 3).join(", ") || market.relatedFlows.filter((flow) => flow.startsWith("Affected: ")).map((flow) => flow.replace("Affected: ", "")).slice(0, 3).join(", ") || "Mapped category outcomes";
 }
 
 function SeverityPill({ severity }: { severity: SignalSeverity }) {
@@ -80,13 +109,18 @@ function ObserverLockCard() {
   );
 }
 
-export function MarketWorkspaceClient({ workspace }: { workspace: MarketWorkspaceData }) {
+export function MarketWorkspaceClient({ workspace, loadingLive = false }: { workspace: MarketWorkspaceData; loadingLive?: boolean }) {
   const { plan } = useCurrentPlan();
   const isObserver = plan === "observer";
-  const visibleMarkets = isObserver ? workspace.markets.slice(0, 2) : workspace.markets;
-  const [selectedId, setSelectedId] = useState(workspace.markets[0].id);
-  const selected = visibleMarkets.find((market) => market.id === selectedId) ?? visibleMarkets[0] ?? workspace.markets[0];
+  const visibleMarkets = useMemo(() => (isObserver ? workspace.markets.slice(0, 2) : workspace.markets), [isObserver, workspace.markets]);
+  const catalystOnlyTable = visibleMarkets.length > 0 && visibleMarkets.every(isCatalystRow);
+  const [selectedId, setSelectedId] = useState<string | null>(workspace.markets[0]?.id ?? null);
+  const selected = visibleMarkets.find((market) => market.id === selectedId) ?? visibleMarkets[0] ?? workspace.markets[0] ?? null;
   const [flows, setFlows] = useState<HyperliquidPayload | null>(null);
+
+  useEffect(() => {
+    setSelectedId(workspace.markets[0]?.id ?? null);
+  }, [workspace.markets]);
 
   useEffect(() => {
     if (workspace.slug !== "crypto") return;
@@ -143,6 +177,21 @@ export function MarketWorkspaceClient({ workspace }: { workspace: MarketWorkspac
               </div>
             )}
           </div>
+          <div className="mt-4 grid gap-2 border-t border-white/[0.06] pt-4 md:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="flex flex-wrap gap-2">
+              {(workspace.sources ?? ["live market data", "news feed", "catalyst feed", "OracleX analysis"]).map((source) => (
+                <Badge key={source} className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] uppercase tracking-[0.1em] text-slate-300">
+                  Source: {source}
+                </Badge>
+              ))}
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-slate-500">
+              Last Updated: <span className="text-blue-100">{formatTimestamp(workspace.lastUpdatedAt)}</span>
+              <span className="mx-2 text-slate-700">/</span>
+              Refresh: <span className="text-blue-100">{refreshLabel(workspace.refreshCadenceHours)}</span>
+            </div>
+          </div>
+          {workspace.sourceNote ? <p className="mt-3 text-xs leading-5 text-slate-500">{workspace.sourceNote}</p> : null}
         </section>
 
         <div className="grid gap-4 lg:grid-cols-4">
@@ -155,8 +204,17 @@ export function MarketWorkspaceClient({ workspace }: { workspace: MarketWorkspac
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</span>
                     <Icon className="size-4 text-blue-200" />
                   </div>
-                  <div className="font-mono text-3xl tracking-[-0.05em] text-white">{value}</div>
-                  <div className="mt-2 text-xs text-blue-200">{detail}</div>
+                  {loadingLive ? (
+                    <>
+                      <div className="h-8 w-20 rounded bg-white/[0.08]" />
+                      <div className="mt-3 h-3 w-36 rounded bg-blue-300/[0.08]" />
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-mono text-3xl tracking-[-0.05em] text-white">{value}</div>
+                      <div className="mt-2 text-xs text-blue-200">{detail}</div>
+                    </>
+                  )}
                 </CardContent>
               </Panel>
             );
@@ -223,44 +281,89 @@ export function MarketWorkspaceClient({ workspace }: { workspace: MarketWorkspac
         )}
 
         <Panel>
-          <PanelHeader title="Market Intelligence Table" action={isObserver ? "2 market preview" : "Category filtered"} />
+          <PanelHeader title="Market Intelligence Table" action={loadingLive ? "Loading live data" : visibleMarkets.length ? (isObserver ? "2 row preview" : catalystOnlyTable ? "Catalyst watch" : "Category filtered") : "No active markets"} />
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left text-xs">
-                <thead className="border-b border-white/[0.075] bg-white/[0.02] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
-                  <tr>
-                    {["Market", "Category", "Probability", "OracleX Probability", "Spread / Divergence", "Volume", "Smart Money Bias", "Signal Severity", "Last Update"].map((header) => (
-                      <th key={header} className="px-4 py-3 font-medium">{header}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleMarkets.map((market) => {
-                    const gap = divergence(market);
-                    const active = selected.id === market.id;
-                    return (
-                      <tr key={market.id} onClick={() => setSelectedId(market.id)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${active ? "bg-blue-300/[0.055]" : "bg-transparent"}`}>
-                        <td className="px-4 py-3">
-                          <div className="max-w-[270px] font-semibold leading-5 text-white">{market.title}</div>
+              {catalystOnlyTable ? (
+                <table className="w-full min-w-[1080px] text-left text-xs">
+                  <thead className="border-b border-white/[0.075] bg-white/[0.02] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                    <tr>
+                      {["Catalyst / Market", "Category", "Source", "Last Update", "Affected Markets", "OracleX Read", "Importance"].map((header) => (
+                        <th key={header} className="px-4 py-3 font-medium">{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleMarkets.map((market) => {
+                      const active = selected?.id === market.id;
+                      return (
+                        <tr key={market.id} onClick={() => setSelectedId(market.id)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${active ? "bg-blue-300/[0.055]" : "bg-transparent"}`}>
+                          <td className="px-4 py-3">
+                            <div className="max-w-[300px] font-semibold leading-5 text-white">{market.title}</div>
+                            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100">Probability: unavailable</div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400">{market.categoryLabel}</td>
+                          <td className="px-4 py-3 text-slate-300">{market.source ?? "OracleX analysis"}</td>
+                          <td className="px-4 py-3 font-mono text-slate-500">{market.lastUpdate}</td>
+                          <td className="px-4 py-3 text-slate-300">{affectedMarketsLabel(market)}</td>
+                          <td className="px-4 py-3 text-slate-300">{market.oracleRead ?? "Catalyst watch"}</td>
+                          <td className="px-4 py-3"><SeverityPill severity={market.signalSeverity} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full min-w-[980px] text-left text-xs">
+                  <thead className="border-b border-white/[0.075] bg-white/[0.02] font-mono text-[10px] uppercase tracking-[0.12em] text-slate-600">
+                    <tr>
+                      {["Market", "Category", "Probability", "OracleX Probability", "Spread / Divergence", "Volume", "Smart Money Bias", "Signal Severity", "Last Update"].map((header) => (
+                        <th key={header} className="px-4 py-3 font-medium">{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleMarkets.length ? visibleMarkets.map((market) => {
+                      const gap = divergence(market);
+                      const active = selected?.id === market.id;
+                      return (
+                        <tr key={market.id} onClick={() => setSelectedId(market.id)} className={`cursor-pointer border-b border-white/[0.055] transition hover:bg-blue-300/[0.035] ${active ? "bg-blue-300/[0.055]" : "bg-transparent"}`}>
+                          <td className="px-4 py-3">
+                            <div className="max-w-[270px] font-semibold leading-5 text-white">{market.title}</div>
+                            {market.source ? <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-blue-100">Source: {market.source}</div> : null}
+                          </td>
+                          <td className="px-4 py-3 text-slate-400">{market.categoryLabel}</td>
+                          <td className="px-4 py-3 font-mono text-slate-200">{probability(market.probability)}</td>
+                          <td className="px-4 py-3 font-mono text-blue-100">{isCatalystRow(market) ? "Catalyst watch" : probability(market.oracleProbability)}</td>
+                          <td className={`px-4 py-3 font-mono ${gap >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                            {isCatalystRow(market) ? "Unavailable" : (
+                              <span className="inline-flex items-center gap-1">
+                                {gap >= 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
+                                {signed(gap)} pts
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-slate-300">{market.volume}</td>
+                          <td className="px-4 py-3"><BiasBadge bias={market.smartMoneyBias} /></td>
+                          <td className="px-4 py-3"><SeverityPill severity={market.signalSeverity} /></td>
+                          <td className="px-4 py-3 font-mono text-slate-500">{market.lastUpdate}</td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-400">
+                          {loadingLive ? (
+                            <div className="mx-auto grid max-w-xl gap-2">
+                              <div className="mx-auto h-3 w-48 rounded bg-white/[0.08]" />
+                              <div className="mx-auto h-3 w-72 rounded bg-white/[0.05]" />
+                            </div>
+                          ) : "No active markets currently tracked."}
                         </td>
-                        <td className="px-4 py-3 text-slate-400">{market.categoryLabel}</td>
-                        <td className="px-4 py-3 font-mono text-slate-200">{probability(market.probability)}</td>
-                        <td className="px-4 py-3 font-mono text-blue-100">{probability(market.oracleProbability)}</td>
-                        <td className={`px-4 py-3 font-mono ${gap >= 0 ? "text-emerald-200" : "text-red-200"}`}>
-                          <span className="inline-flex items-center gap-1">
-                            {gap >= 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-                            {signed(gap)} pts
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-slate-300">{market.volume}</td>
-                        <td className="px-4 py-3"><BiasBadge bias={market.smartMoneyBias} /></td>
-                        <td className="px-4 py-3"><SeverityPill severity={market.signalSeverity} /></td>
-                        <td className="px-4 py-3 font-mono text-slate-500">{market.lastUpdate}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </CardContent>
         </Panel>
@@ -315,54 +418,67 @@ export function MarketWorkspaceClient({ workspace }: { workspace: MarketWorkspac
 
       <aside className="grid gap-4 2xl:sticky 2xl:top-5 2xl:self-start">
         <Panel>
-          <PanelHeader title="Selected Market" action={selected.categoryLabel} />
+          <PanelHeader title="Selected Market" action={selected?.categoryLabel ?? "No active market"} />
           <CardContent className="p-4">
-            <div className="mb-4">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] text-blue-100">{selected.categoryLabel}</Badge>
-                <SeverityPill severity={selected.signalSeverity} />
-              </div>
-              <h2 className="text-xl font-semibold leading-tight tracking-[-0.03em] text-white">{selected.title}</h2>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                ["Market", probability(selected.probability)],
-                ["OracleX", probability(selected.oracleProbability)],
-                ["Divergence", `${signed(divergence(selected))} pts`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
-                  <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
-                  <div className="mt-2 font-mono text-lg tracking-[-0.04em] text-white">{value}</div>
+            {selected ? (
+              <>
+                <div className="mb-4">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <Badge className="h-6 rounded-lg border border-blue-300/15 bg-blue-300/[0.07] font-mono text-[10px] text-blue-100">{selected.categoryLabel}</Badge>
+                    <SeverityPill severity={selected.signalSeverity} />
+                    {selected.source ? <Badge className="h-6 rounded-lg border border-white/[0.08] bg-white/[0.035] font-mono text-[10px] text-slate-300">Source: {selected.source}</Badge> : null}
+                  </div>
+                  <h2 className="text-xl font-semibold leading-tight tracking-[-0.03em] text-white">{selected.title}</h2>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-4 space-y-3">
-              {[
-                ["Smart money summary", selected.smartMoneySummary],
-                ["Narrative context", selected.narrativeContext],
-                ["AI interpretation", selected.aiInterpretation],
-                ["What to watch next", selected.watchNext],
-              ].map(([label, text]) => (
-                <div key={label} className="rounded-xl border border-white/[0.065] bg-black/28 p-3">
-                  <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</div>
-                  <p className="text-xs leading-5 text-slate-300">{text}</p>
-                </div>
-              ))}
-
-              <div className="rounded-xl border border-white/[0.065] bg-black/28 p-3">
-                <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">Related flows</div>
-                <div className="space-y-2">
-                  {selected.relatedFlows.map((flow) => (
-                    <div key={flow} className="flex items-start gap-2 text-xs leading-5 text-slate-300">
-                      <CircleDot className="mt-1 size-2.5 shrink-0 text-blue-200" />
-                      {flow}
+                <div className="grid grid-cols-3 gap-2">
+                  {(isCatalystRow(selected) ? [
+                    ["Probability", "Unavailable"],
+                    ["OracleX", "Catalyst watch"],
+                    ["Importance", selected.importance ?? selected.signalSeverity],
+                  ] : [
+                    ["Market", probability(selected.probability)],
+                    ["OracleX", probability(selected.oracleProbability)],
+                    ["Divergence", `${signed(divergence(selected))} pts`],
+                  ]).map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-white/[0.065] bg-white/[0.025] p-3">
+                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-slate-600">{label}</div>
+                      <div className="mt-2 font-mono text-lg tracking-[-0.04em] text-white">{value}</div>
                     </div>
                   ))}
                 </div>
+
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["Smart money summary", selected.smartMoneySummary],
+                    ["Narrative context", selected.narrativeContext],
+                    ["AI interpretation", selected.aiInterpretation],
+                    ["What to watch next", selected.watchNext],
+                  ].map(([label, text]) => (
+                    <div key={label} className="rounded-xl border border-white/[0.065] bg-black/28 p-3">
+                      <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</div>
+                      <p className="text-xs leading-5 text-slate-300">{text}</p>
+                    </div>
+                  ))}
+
+                  <div className="rounded-xl border border-white/[0.065] bg-black/28 p-3">
+                    <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">Related flows</div>
+                    <div className="space-y-2">
+                      {selected.relatedFlows.map((flow) => (
+                        <div key={flow} className="flex items-start gap-2 text-xs leading-5 text-slate-300">
+                          <CircleDot className="mt-1 size-2.5 shrink-0 text-blue-200" />
+                          {flow}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-white/[0.065] bg-black/28 p-4 text-sm text-slate-400">
+                {loadingLive ? "Loading live market intelligence." : "No active markets currently tracked."}
               </div>
-            </div>
+            )}
           </CardContent>
         </Panel>
       </aside>

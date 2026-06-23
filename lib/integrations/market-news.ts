@@ -51,7 +51,7 @@ interface NewsArticle {
 const RSS_FEEDS = [
   { source: "Federal Reserve", url: "https://www.federalreserve.gov/feeds/press_all.xml" },
   { source: "SEC", url: "https://www.sec.gov/news/pressreleases.rss" },
-  { source: "Yahoo Finance", url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s=BTC-USD,ETH-USD,SOL-USD,NVDA&region=US&lang=en-US" },
+  { source: "Yahoo Finance", url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s=BTC-USD,ETH-USD,SOL-USD,NVDA,AMD,TSM,AVGO,META,MSFT,GOOGL,AMZN&region=US&lang=en-US" },
   { source: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
   { source: "CNBC Markets", url: "https://www.cnbc.com/id/100003114/device/rss/rss.html" },
 ];
@@ -84,43 +84,95 @@ const TOPICS: CatalystTopic[] = [
     reactions: ["Rate-cut probability repricing", "Treasury yield volatility", "BTC implied-volatility expansion"],
   },
   {
-    title: "Crypto ETF And Regulation",
+    title: "BTC ETH SOL ETF Developments",
     category: "ETF / Regulation",
     importance: "High",
-    query: "Bitcoin Ethereum Solana crypto ETF SEC regulation approval filing",
-    keywords: ["bitcoin", "ethereum", "solana", "crypto", "etf", "sec", "cftc", "regulation", "stablecoin", "filing"],
-    affectedMarkets: ["SOL ETF approved in 2026", "Crypto ETF expansion in 2026", "BTC breaks ATH this quarter", "Stablecoin bill passes in 2026"],
+    query: "Bitcoin Ethereum Solana ETF SEC approval filing issuer flow",
+    keywords: ["bitcoin", "btc", "ethereum", "eth", "solana", "sol", "etf", "sec", "approval", "filing", "issuer", "flow"],
+    affectedMarkets: ["SOL ETF approved in 2026", "Crypto ETF expansion in 2026", "BTC breaks ATH this quarter", "ETH ETF flows accelerate"],
     narratives: ["ETF approval cycle", "Institutional crypto access", "US crypto regulation"],
-    watchNext: ["SEC filings", "issuer amendments", "court rulings", "congressional schedules", "ETF flow data"],
+    watchNext: ["SEC filings", "issuer amendments", "BTC ETF flows", "ETH ETF flows", "SOL ETF review windows"],
     why: "Regulatory and ETF headlines can rapidly move approval probabilities, issuer expectations, and crypto liquidity.",
     historicalImpact: ["ETF filing updates have previously pulled liquidity into adjacent approval markets.", "Regulatory clarity can broaden institutional crypto participation.", "Enforcement headlines can narrow risk appetite across altcoin markets."],
     reactions: ["Higher attention in ETF probability markets", "Rotation into affected tokens", "Regulatory-risk repricing"],
   },
   {
+    title: "Major Crypto Regulation",
+    category: "Crypto Regulation",
+    importance: "High",
+    query: "SEC CFTC Congress stablecoin crypto market structure regulation enforcement",
+    keywords: ["sec", "cftc", "congress", "stablecoin", "crypto", "market structure", "regulation", "enforcement", "bill"],
+    affectedMarkets: ["Stablecoin bill passes in 2026", "Crypto market structure bill passes", "BTC breaks ATH this quarter", "Crypto ETF expansion in 2026"],
+    narratives: ["US crypto regulation", "Stablecoin policy", "Institutional adoption"],
+    watchNext: ["committee schedules", "agency statements", "bill text", "issuer compliance updates", "court deadlines"],
+    why: "Crypto policy headlines can change institutional participation assumptions and regulatory-risk discounts across tokens.",
+    historicalImpact: ["Constructive policy headlines have supported exchange and token beta.", "Enforcement actions can pressure liquidity and widen regulatory-risk premia.", "Stablecoin clarity can improve market-structure confidence."],
+    reactions: ["Regulatory-risk repricing", "Exchange-token sensitivity", "Stablecoin-market attention"],
+  },
+  {
+    title: "Major Token And Liquidity Events",
+    category: "Token / Liquidity",
+    importance: "High",
+    query: "token unlock airdrop staking liquidity crypto treasury sale bitcoin ethereum solana",
+    keywords: ["token unlock", "unlock", "airdrop", "staking", "liquidity", "treasury", "sale", "bitcoin", "ethereum", "solana"],
+    affectedMarkets: ["BTC breaks ATH this quarter", "SOL outperforms ETH this quarter", "Crypto market liquidity tightens", "Altcoin rotation accelerates"],
+    narratives: ["Token supply", "Liquidity rotation", "Crypto beta"],
+    watchNext: ["unlock calendars", "issuer treasury wallets", "staking queues", "stablecoin supply", "spot/perp basis"],
+    why: "Token supply events and liquidity rotations can move crypto prediction markets even without a new macro catalyst.",
+    historicalImpact: ["Large unlocks can pressure affected assets when liquidity is thin.", "Airdrop and staking headlines can redirect attention into ecosystem markets.", "Stablecoin supply expansion can support crypto beta."],
+    reactions: ["Token-specific volatility", "Liquidity rotation", "Higher derivatives attention"],
+  },
+  {
     title: "Exchange And Liquidity Events",
     category: "Crypto Liquidity",
     importance: "High",
-    query: "Binance Coinbase Kraken Tether USDC exchange outage hack liquidity reserves",
-    keywords: ["binance", "coinbase", "kraken", "bybit", "okx", "tether", "usdc", "exchange", "outage", "hack", "reserves", "withdrawal"],
+    query: "Hyperliquid Binance Coinbase Kraken Tether USDC exchange outage hack liquidity reserves flows",
+    keywords: ["hyperliquid", "binance", "coinbase", "kraken", "bybit", "okx", "tether", "usdc", "exchange", "outage", "hack", "reserves", "withdrawal", "flow"],
     affectedMarkets: ["BTC breaks ATH this quarter", "Major exchange outage in 2026", "Stablecoin depeg in 2026", "Crypto market liquidity tightens"],
-    narratives: ["Exchange stability", "Stablecoin liquidity", "Market structure"],
-    watchNext: ["exchange status pages", "reserve attestations", "stablecoin redemptions", "on-chain flows", "funding rates"],
+    narratives: ["Exchange stability", "Stablecoin liquidity", "Market structure", "Hyperliquid flows"],
+    watchNext: ["Hyperliquid open interest", "exchange status pages", "reserve attestations", "stablecoin redemptions", "funding rates"],
     why: "Exchange and stablecoin shocks can affect trading access, liquidity depth, and forced-risk reduction across crypto markets.",
     historicalImpact: ["Exchange stress has previously widened spreads and reduced risk appetite.", "Stablecoin redemption waves can pressure crypto liquidity.", "Resolved outages often normalize pricing faster than solvency concerns."],
     reactions: ["Wider crypto spreads", "Lower leverage appetite", "Stablecoin-risk repricing"],
   },
   {
-    title: "AI And Semiconductor Catalyst",
+    title: "Nvidia And Semiconductor Catalyst",
     category: "Corporate / AI",
-    importance: "Medium",
-    query: "Nvidia semiconductor chips AI infrastructure earnings guidance capex",
-    keywords: ["nvidia", "semiconductor", "chips", "ai infrastructure", "data center", "earnings", "guidance", "capex"],
+    importance: "High",
+    query: "Nvidia semiconductor chips AI infrastructure earnings guidance capex AMD TSMC Broadcom",
+    keywords: ["nvidia", "nvda", "semiconductor", "chips", "gpu", "ai infrastructure", "data center", "earnings", "guidance", "capex", "amd", "tsmc", "broadcom"],
     affectedMarkets: ["Nvidia market cap above $5T", "AI regulation bill passes in 2026", "AI compute capex accelerates", "Risk assets rally this quarter"],
     narratives: ["AI capex", "Semiconductor supply", "Risk appetite"],
     watchNext: ["NVDA guidance", "hyperscaler capex", "export controls", "chip supply", "AI policy headlines"],
     why: "AI and semiconductor news can spill into broader equity risk appetite and AI-linked prediction markets.",
     historicalImpact: ["Strong AI-capex guidance has lifted attention across compute and infrastructure markets.", "Export-control headlines can hit semiconductor beta and broader risk sentiment.", "AI earnings cycles matter most for crypto when macro liquidity is supportive."],
     reactions: ["AI-linked market attention", "Equity-risk spillover", "Compute-policy repricing"],
+  },
+  {
+    title: "OpenAI Anthropic And Model Releases",
+    category: "AI Companies / Models",
+    importance: "High",
+    query: "OpenAI Anthropic Google DeepMind Meta AI model release agent benchmark partnership",
+    keywords: ["openai", "anthropic", "deepmind", "meta ai", "model", "agent", "benchmark", "partnership", "release"],
+    affectedMarkets: ["OpenAI releases new frontier model", "AI agent adoption accelerates", "AI compute capex accelerates", "AI regulation bill passes in 2026"],
+    narratives: ["Model release cycle", "Agent adoption", "AI platform competition"],
+    watchNext: ["model launch posts", "benchmark disclosures", "enterprise partnerships", "developer adoption", "safety-policy updates"],
+    why: "Major model and agent releases can shift expectations for AI adoption, compute demand, and regulation-sensitive markets.",
+    historicalImpact: ["Frontier model launches have increased attention to compute and platform winners.", "Agent-product releases can move software automation narratives.", "Safety incidents can accelerate regulatory pressure."],
+    reactions: ["AI market attention", "Compute-demand repricing", "Regulation probability movement"],
+  },
+  {
+    title: "AI Regulation And Compute Policy",
+    category: "AI Policy",
+    importance: "High",
+    query: "AI regulation compute policy export controls chips data center energy OpenAI Anthropic Nvidia",
+    keywords: ["ai regulation", "compute policy", "export controls", "chips", "data center", "energy", "openai", "anthropic", "nvidia"],
+    affectedMarkets: ["AI regulation bill passes in 2026", "AI compute capex accelerates", "Nvidia market cap above $5T", "US AI export controls expand"],
+    narratives: ["AI regulation", "Compute policy", "Infrastructure constraints"],
+    watchNext: ["export-control updates", "data-center approvals", "power-contract announcements", "agency guidance", "model-safety rules"],
+    why: "Compute and AI-policy decisions can directly affect chip demand, data-center buildouts, and AI adoption probabilities.",
+    historicalImpact: ["Export controls have moved semiconductor expectations quickly.", "Power and data-center constraints can cap AI infrastructure growth.", "Regulatory proposals can shift market probabilities before final rules."],
+    reactions: ["Semiconductor beta repricing", "Infrastructure-market attention", "Policy-risk premium"],
   },
 ];
 
@@ -206,12 +258,29 @@ function buildTopicCatalyst(topic: CatalystTopic, articles: NewsArticle[], now: 
 }
 
 async function fetchPublicNewsArticles(errors: string[]) {
-  const groups = await Promise.allSettled(RSS_FEEDS.map(fetchRssFeed));
+  const groups = await Promise.allSettled([
+    ...RSS_FEEDS.map(fetchRssFeed),
+    ...TOPICS.map(fetchTopicArticles),
+  ]);
   return dedupeNewsArticles(groups.flatMap((result, index) => {
     if (result.status === "fulfilled") return result.value;
-    errors.push(`${RSS_FEEDS[index].source}: ${result.reason instanceof Error ? result.reason.message : "RSS unavailable"}`);
+    const source = index < RSS_FEEDS.length ? RSS_FEEDS[index].source : `GDELT ${TOPICS[index - RSS_FEEDS.length].title}`;
+    errors.push(`${source}: ${result.reason instanceof Error ? result.reason.message : "news unavailable"}`);
     return [];
   }));
+}
+
+async function fetchTopicArticles(topic: CatalystTopic): Promise<NewsArticle[]> {
+  const articles = await fetchGdeltArticles(topic.query);
+  return dedupeArticles(articles).map((article) => {
+    const publishedAt = parseGdeltDate(article.seendate).toISOString();
+    return {
+      title: cleanTitle(article.title),
+      url: article.url ?? "",
+      publishedAt,
+      source: sourceName(article),
+    };
+  }).filter((article) => article.title && article.url && new Date(article.publishedAt).getTime() > 0);
 }
 
 async function fetchRssFeed(feed: { source: string; url: string }): Promise<NewsArticle[]> {
@@ -289,11 +358,23 @@ function dedupeNewsArticles(articles: NewsArticle[]) {
 
 function topicMatchesArticle(topic: CatalystTopic, article: NewsArticle) {
   const haystack = `${article.title} ${article.source}`.toLowerCase();
-  if (topic.title === "Crypto ETF And Regulation") {
+  if (topic.title === "BTC ETH SOL ETF Developments") {
     return hasAny(haystack, ["bitcoin", "ethereum", "solana", "crypto", "stablecoin"]) && hasAny(haystack, ["etf", "sec", "cftc", "regulation", "approval", "filing"]);
   }
+  if (topic.title === "Major Crypto Regulation") {
+    return hasAny(haystack, ["crypto", "stablecoin", "bitcoin", "ethereum", "solana"]) && hasAny(haystack, ["sec", "cftc", "congress", "regulation", "bill", "enforcement"]);
+  }
+  if (topic.title === "Major Token And Liquidity Events") {
+    return hasAny(haystack, ["bitcoin", "ethereum", "solana", "crypto", "token", "stablecoin"]) && hasAny(haystack, ["unlock", "airdrop", "staking", "liquidity", "treasury", "flow"]);
+  }
   if (topic.title === "Exchange And Liquidity Events") {
-    return hasAny(haystack, ["binance", "coinbase", "kraken", "bybit", "okx", "tether", "usdc", "stablecoin", "bitcoin", "crypto"]) && hasAny(haystack, ["exchange", "outage", "hack", "liquidity", "reserves", "withdrawal"]);
+    return hasAny(haystack, ["hyperliquid", "binance", "coinbase", "kraken", "bybit", "okx", "tether", "usdc", "stablecoin", "bitcoin", "crypto"]) && hasAny(haystack, ["exchange", "outage", "hack", "liquidity", "reserves", "withdrawal", "flow"]);
+  }
+  if (topic.title === "OpenAI Anthropic And Model Releases") {
+    return hasAny(haystack, ["openai", "anthropic", "deepmind", "meta ai", "model", "agent"]) && hasAny(haystack, ["release", "launch", "benchmark", "partnership", "agent", "model"]);
+  }
+  if (topic.title === "AI Regulation And Compute Policy") {
+    return hasAny(haystack, ["ai", "artificial intelligence", "nvidia", "openai", "anthropic", "chip", "compute"]) && hasAny(haystack, ["regulation", "policy", "export control", "data center", "energy", "infrastructure"]);
   }
   return topic.keywords.some((keyword) => haystack.includes(keyword));
 }
